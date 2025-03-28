@@ -2,12 +2,12 @@ version: '3.8'
 
 services:
   rabbitmq:
-    image: rabbitmq:4.0.7-management
+    image: rabbitmq:management
     container_name: rabbitmq
     restart: always
     ports:
       - "5672:5672"
-      - "15672:15672"
+      - "15673:15672"
     environment:
       RABBITMQ_DEFAULT_USER: user
       RABBITMQ_DEFAULT_PASS: password
