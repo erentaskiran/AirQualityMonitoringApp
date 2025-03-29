@@ -6,9 +6,3 @@ type AirQualityData struct {
 	Parameter string  `json:"parameter"`
 	Value     float64 `json:"value"`
 }
-type AirQualityPayload struct {
-	Latitude  string `json:"latitude"`
-	Longitude string `json:"longitude"`
-	Parameter string `json:"parameter"`
-	Value     string `json:"value"`
-}
