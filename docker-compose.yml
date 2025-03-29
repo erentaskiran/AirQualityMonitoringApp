@@ -44,6 +44,17 @@ services:
     networks:
       - air-quality-network
 
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - ingest-service
+    networks:
+      - air-quality-network
+
 networks:
   air-quality-network:
     driver: bridge
