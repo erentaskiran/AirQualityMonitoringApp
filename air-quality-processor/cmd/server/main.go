@@ -9,18 +9,21 @@ import (
 	"api/pkg/db"
 
 	"github.com/joho/godotenv"
+	"github.com/redis/go-redis/v9"
 	"github.com/streadway/amqp"
 )
 
 type app struct {
 	QueueConn *amqp.Connection
 	Db        *sql.DB
+	Redis     *redis.Client
 }
 
 func main() {
 	_ = godotenv.Load()
 	rabbitMQURL := os.Getenv("RABBITMQ_URL")
 	dbURL := os.Getenv("DATABASE_URL")
+	redisURL := os.Getenv("REDIS_URL")
 
 	conn, err := amqp.Dial(rabbitMQURL)
 	if err != nil {
@@ -32,17 +35,17 @@ func main() {
 	Db := db.InitDB(dbURL)
 	defer Db.Close()
 
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
+	rdb := redis.NewClient(&redis.Options{
+		Addr: redisURL,
+	})
 
 	app := &app{
 		QueueConn: conn,
 		Db:        Db,
+		Redis:     rdb,
 	}
 
-	consumer := consumer.NewConsumer(app.QueueConn, app.Db)
+	consumer := consumer.NewConsumer(app.QueueConn, app.Db, app.Redis)
 	consumer.StartConsumer()
 	fmt.Println("Consumer started")
 }

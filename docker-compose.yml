@@ -29,6 +29,17 @@ services:
     networks:
       - air-quality-network
 
+  redis:
+    image: redis:latest
+    container_name: redis
+    restart: always
+    ports:
+      - "6379:6379"
+    networks:
+      - air-quality-network
+    volumes:
+      - redis_data:/data
+
   ingest-service:
     build: ./air-quality-ingest
     container_name: ingest-service
@@ -38,9 +49,11 @@ services:
     depends_on:
       - rabbitmq
       - timescaledb
+      - redis
     environment:
       RABBITMQ_URL: amqp://user:password@rabbitmq:5672/
       DATABASE_URL: postgres://postgres:password@timescaledb:5432/air_quality?sslmode=disable
+      REDIS_URL: redis://redis:6379
     networks:
       - air-quality-network
 
@@ -51,9 +64,11 @@ services:
     depends_on:
       - rabbitmq
       - timescaledb
+      - redis
     environment:
       RABBITMQ_URL: amqp://user:password@rabbitmq:5672/
       DATABASE_URL: postgres://postgres:password@timescaledb:5432/air_quality?sslmode=disable
+      REDIS_URL: redis://redis:6379
     networks:
       - air-quality-network
 
@@ -74,3 +89,4 @@ networks:
 
 volumes:
   timescale_data:
+  redis_data:

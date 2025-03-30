@@ -17,9 +17,9 @@ if [[ ! "$2" =~ ^-?[0-9]+(\.[0-9]+)?$ ]]; then
   exit 1
 fi
 
-# Check if third argument is alphanumeric
-if [[ ! "$3" =~ ^[a-zA-Z0-9]?$ ]]; then
-  echo "Error: Third argument (parameter) must contain only letters and numbers."
+# Check third argument is equal to "pm2.5", "pm10", "no2", "o3", "so2"
+if [[ ! "$3" =~ ^(pm2\.5|pm10|no2|o3|so2)$ ]]; then
+  echo "Error: Third argument (parameter) must be one of: pm2.5, pm10, no2, o3, so2."
   exit 1
 fi
 
@@ -29,11 +29,7 @@ if [[ ! "$4" =~ ^-?[0-9]+(\.[0-9]+)?$ ]]; then
   exit 1
 fi
 
-# Check third argument is equal to "pm2.5", "pm10", "no2", "o3", "so2"
-if [[ ! "$3" =~ ^(pm2\.5|pm10|no2|o3|so2)$ ]]; then
-  echo "Error: Third argument (parameter) must be one of: pm2.5, pm10, no2, o3, so2."
-  exit 1
-fi
+
 
 # Send request using curl
 curl -X POST "http://localhost:8080/api/ingest" \

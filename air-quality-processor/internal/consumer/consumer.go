@@ -4,23 +4,27 @@ import (
 	"api/internal/anomaly"
 	"api/internal/models"
 	"api/internal/notify"
+	"api/internal/repository"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/streadway/amqp"
 )
 
 type Consumer struct {
 	QueueConn *amqp.Connection
 	Db        *sql.DB
+	Redis     *redis.Client
 }
 
-func NewConsumer(queueConn *amqp.Connection, db *sql.DB) *Consumer {
+func NewConsumer(queueConn *amqp.Connection, db *sql.DB, Redis *redis.Client) *Consumer {
 	return &Consumer{
 		QueueConn: queueConn,
 		Db:        db,
+		Redis:     Redis,
 	}
 }
 
@@ -32,6 +36,8 @@ func (c *Consumer) StartConsumer() {
 	defer ch.Close()
 
 	notify := notify.NewNotify(c.QueueConn)
+	airQualityRepository := repository.NewAirQualityRepository(c.Db)
+	AnomalyDetector := anomaly.NewAnomalyDetector(c.Redis, c.Db)
 
 	q, err := ch.QueueDeclare(
 		"air_quality",
@@ -70,23 +76,15 @@ func (c *Consumer) StartConsumer() {
 
 			fmt.Printf("Received a message: %+v\n", data)
 
-			if anomaly.IsAnomalous(data) {
+			if AnomalyDetector.IsAnomalous(data) {
 				fmt.Println("⚠️ Anomaly detected!", data)
 				notify.NotifyAnomaly(data)
 			}
 
-			c.SaveToDB(data)
+			airQualityRepository.SaveToDB(data)
 		}
 	}()
 
 	log.Println(" [*] Waiting for messages. To exit press CTRL+C")
 	<-forever
-}
-
-func (c *Consumer) SaveToDB(data models.AirQualityData) {
-	_, err := c.Db.Exec(`INSERT INTO air_quality (latitude, longitude, parameter, value) VALUES ($1, $2, $3, $4)`,
-		data.Latitude, data.Longitude, data.Parameter, data.Value)
-	if err != nil {
-		log.Printf("Failed to insert data: %s", err)
-	}
 }
