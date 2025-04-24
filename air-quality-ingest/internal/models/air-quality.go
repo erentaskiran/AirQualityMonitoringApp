@@ -1,14 +1,8 @@
 package models
 
-type AirQualityData struct {
+type AirQualityPayload struct {
 	Latitude  float64 `json:"latitude"`
 	Longitude float64 `json:"longitude"`
 	Parameter string  `json:"parameter"`
 	Value     float64 `json:"value"`
-}
-type AirQualityPayload struct {
-	Latitude  string `json:"latitude"`
-	Longitude string `json:"longitude"`
-	Parameter string `json:"parameter"`
-	Value     string `json:"value"`
 }

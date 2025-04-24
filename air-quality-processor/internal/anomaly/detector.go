@@ -23,7 +23,7 @@ func NewAnomalyDetector(redis *redis.Client, Db *sql.DB) *AnomalyDetector {
 }
 
 func (a *AnomalyDetector) IsAnomalous(data models.AirQualityData) bool {
-	if a.CheckTresholds(data) {
+	if a.CheckTreshold(data) {
 		fmt.Println("⚠️ Anomaly Detected (Threshold):", data)
 		a.triggerAnomalyActions(data)
 		return true
@@ -51,7 +51,7 @@ func (a *AnomalyDetector) IsAnomalous(data models.AirQualityData) bool {
 	return false
 }
 
-func (a *AnomalyDetector) CheckTresholds(data models.AirQualityData) bool {
+func (a *AnomalyDetector) CheckTreshold(data models.AirQualityData) bool {
 	thresholds := map[string]float64{
 		"PM2.5": 15.0,  // WHO 2021 24 saatlik ortalama sınır değeri
 		"PM10":  45.0,  // WHO 2021 24 saatlik ortalama sınır değeri
@@ -69,7 +69,6 @@ func (a *AnomalyDetector) CheckTresholds(data models.AirQualityData) bool {
 	} else {
 		dataList, err = airQualityRepository.Get24HourDataForParameter(data.Parameter, data.Latitude, data.Longitude)
 	}
-
 	if err != nil {
 		fmt.Println("Error fetching data:", err)
 		return false

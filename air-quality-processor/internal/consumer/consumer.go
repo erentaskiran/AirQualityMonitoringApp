@@ -40,7 +40,7 @@ func (c *Consumer) StartConsumer() {
 	AnomalyDetector := anomaly.NewAnomalyDetector(c.Redis, c.Db)
 
 	q, err := ch.QueueDeclare(
-		"air_quality",
+		"mesurements",
 		true,
 		false,
 		false,

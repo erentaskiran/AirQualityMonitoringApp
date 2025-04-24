@@ -16,16 +16,32 @@ func NewAirQualityRepository(db *sql.DB) *AirQualityRepository {
 		Db: db,
 	}
 }
+
 func (c *AirQualityRepository) SaveToDB(data models.AirQualityData) {
-	_, err := c.Db.Exec(`INSERT INTO air_quality (latitude, longitude, parameter, value) VALUES ($1, $2, $3, $4)`,
-		data.Latitude, data.Longitude, data.Parameter, data.Value)
+	_, err := c.Db.Exec(`
+		INSERT INTO air_quality (location, parameter, value)
+		VALUES (ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
+		        $3,
+		        $4)
+	`, data.Longitude, data.Latitude, data.Parameter, data.Value) // dikkat: lon, lat sırası!
 	if err != nil {
-		log.Printf("Failed to insert data: %s", err)
+		log.Printf("Failed to insert data: %v", err)
 	}
 }
 
 func (c *AirQualityRepository) Get24HourDataForParameter(parameter string, latitude, longitude float64) ([]models.AirQualityData, error) {
-	rows, err := c.Db.Query(`SELECT latitude, longitude, parameter, value FROM air_quality WHERE parameter = $1 AND latitude = $2 AND longitude = $3 AND timestamp >= NOW() - INTERVAL '24 hours'`, parameter, latitude, longitude)
+	query := `
+		SELECT
+			ST_Y(location::geometry) AS latitude,
+			ST_X(location::geometry) AS longitude,
+			parameter,
+			value
+		FROM air_quality
+		WHERE parameter = $1
+		  AND location = ST_SetSRID(ST_MakePoint($2, $3), 4326)::geography
+		  AND timestamp >= NOW() - INTERVAL '24 hours'
+	`
+	rows, err := c.Db.Query(query, parameter, longitude, latitude) // lon, lat!!
 	if err != nil {
 		return nil, fmt.Errorf("failed to query data: %w", err)
 	}
@@ -39,12 +55,22 @@ func (c *AirQualityRepository) Get24HourDataForParameter(parameter string, latit
 		}
 		results = append(results, data)
 	}
-
 	return results, nil
 }
 
 func (c *AirQualityRepository) Get8HourDataForParameter(parameter string, latitude, longitude float64) ([]models.AirQualityData, error) {
-	rows, err := c.Db.Query(`SELECT latitude, longitude, parameter, value FROM air_quality WHERE parameter = $1 AND latitude = $2 AND longitude = $3 AND timestamp >= NOW() - INTERVAL '8 hours'`, parameter, latitude, longitude)
+	query := `
+		SELECT
+			ST_Y(location::geometry) AS latitude,
+			ST_X(location::geometry) AS longitude,
+			parameter,
+			value
+		FROM air_quality
+		WHERE parameter = $1
+		  AND location = ST_SetSRID(ST_MakePoint($2, $3), 4326)::geography
+		  AND timestamp >= NOW() - INTERVAL '8 hours'
+	`
+	rows, err := c.Db.Query(query, parameter, longitude, latitude)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query data: %w", err)
 	}
@@ -58,6 +84,5 @@ func (c *AirQualityRepository) Get8HourDataForParameter(parameter string, latitu
 		}
 		results = append(results, data)
 	}
-
 	return results, nil
 }

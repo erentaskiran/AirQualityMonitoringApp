@@ -17,7 +17,7 @@ func NewQueue(QueueConn *amqp.Connection) *Queue {
 	}
 }
 
-func (r *Queue) PublishToQueue(data models.AirQualityData) error {
+func (r *Queue) PublishToQueue(data models.AirQualityPayload) error {
 	ch, err := r.QueueConn.Channel()
 	if err != nil {
 		return err
@@ -25,7 +25,7 @@ func (r *Queue) PublishToQueue(data models.AirQualityData) error {
 	defer ch.Close()
 
 	q, err := ch.QueueDeclare(
-		"air_quality", // queue name
+		"mesurements", // queue name
 		true,          // durable
 		false,         // delete when unused
 		false,         // exclusive
