@@ -3,55 +3,93 @@ package anomaly
 import (
 	"api/internal/models"
 	"api/internal/repository"
+	"context"
 	"database/sql"
+	_ "embed"
 	"fmt"
 	"math"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 )
 
-type AnomalyDetector struct {
-	Redis *redis.Client
-	Db    *sql.DB
+//go:embed window.lua
+var luaScript string
+
+type Detector struct {
+	db     *sql.DB
+	rdb    *redis.Client
+	script *redis.Script
 }
 
-func NewAnomalyDetector(redis *redis.Client, Db *sql.DB) *AnomalyDetector {
-	return &AnomalyDetector{
-		Redis: redis,
-		Db:    Db,
+const (
+	window   = 24 * time.Hour
+	zKeyTmpl = "sensor:%s:z"  // per‑sensor zset
+	rollTmpl = "sensor:%s:hp" // per‑sensor hash (sum,count)
+)
+
+func NewAnomalyDetector(rdb *redis.Client, db *sql.DB) *Detector {
+	return &Detector{
+		db:     db,
+		rdb:    rdb,
+		script: redis.NewScript(luaScript),
 	}
 }
 
-func (a *AnomalyDetector) IsAnomalous(data models.AirQualityData) bool {
-	if a.CheckTreshold(data) {
-		fmt.Println("⚠️ Anomaly Detected (Threshold):", data)
-		a.triggerAnomalyActions(data)
-		return true
+func (d *Detector) IsAnomalous(data models.AirQualityData) bool {
+	ctx := context.Background()
+
+	zKey := fmt.Sprintf(zKeyTmpl, data.Parameter)
+	rollUp := fmt.Sprintf(rollTmpl, data.Parameter)
+
+	now := data.Timestamp.UnixMilli()
+	cutoff := data.Timestamp.Add(-window).UnixMilli()
+
+	res, err := d.script.Run(ctx, d.rdb,
+		[]string{zKey, rollUp},
+		now, data.Value, cutoff).Result()
+	if err != nil {
+		// fall back or log…
+		return false
 	}
 
-	// Z-score-based detection (Statistical method)
-	if a.isZScoreAnomalous(data) {
-		fmt.Println("⚠️ Anomaly Detected (Z-score):", data)
-		a.triggerAnomalyActions(data)
-		return true
-	}
+	arr := res.([]interface{})
+	sum := arr[0].(int64)
+	count := arr[1].(int64)
+	avg := float64(sum) / float64(count)
+	return data.Value > 0.5*avg
 
-	if a.isTimeSeriesAnomalous(data) {
-		fmt.Println("⚠️ Anomaly Detected (Time Series):", data)
-		a.triggerAnomalyActions(data)
-		return true
-	}
+	/*
+		if d.CheckTreshold(data) {
+			fmt.Println("⚠️ Anomaly Detected (Threshold):", data)
+			d.triggerAnomalyActions(data)
+			return true
+		}
 
-	if a.isGeospatialAnomalous(data) {
-		fmt.Println("⚠️ Anomaly Detected (Geospatial):", data)
-		a.triggerAnomalyActions(data)
-		return true
-	}
+		// Z-score-based detection (Statistical method)
+		if d.isZScoreAnomalous(data) {
+			fmt.Println("⚠️ Anomaly Detected (Z-score):", data)
+			d.triggerAnomalyActions(data)
+			return true
+		}
 
-	return false
+		if d.isTimeSeriesAnomalous(data) {
+			fmt.Println("⚠️ Anomaly Detected (Time Series):", data)
+			d.triggerAnomalyActions(data)
+			return true
+		}
+
+		if d.isGeospatialAnomalous(data) {
+			fmt.Println("⚠️ Anomaly Detected (Geospatial):", data)
+			d.triggerAnomalyActions(data)
+			return true
+		}
+
+		return false
+	*/
 }
 
-func (a *AnomalyDetector) CheckTreshold(data models.AirQualityData) bool {
+func (a *Detector) CheckTreshold(data models.AirQualityData) bool {
 	thresholds := map[string]float64{
 		"PM2.5": 15.0,  // WHO 2021 24 saatlik ortalama sınır değeri
 		"PM10":  45.0,  // WHO 2021 24 saatlik ortalama sınır değeri
@@ -59,7 +97,7 @@ func (a *AnomalyDetector) CheckTreshold(data models.AirQualityData) bool {
 		"SO2":   40.0,  // WHO 2021 24 saatlik ortalama sınır değeri
 		"O3":    100.0, // WHO 2021 8 saatlik ortalama sınır değeri
 	}
-	airQualityRepository := repository.NewAirQualityRepository(a.Db)
+	airQualityRepository := repository.NewAirQualityRepository(a.db)
 
 	var dataList []models.AirQualityData
 	var err error
@@ -83,31 +121,31 @@ func (a *AnomalyDetector) CheckTreshold(data models.AirQualityData) bool {
 	return average > thresholds[data.Parameter]
 }
 
-func (a *AnomalyDetector) isZScoreAnomalous(data models.AirQualityData) bool {
+func (a *Detector) isZScoreAnomalous(data models.AirQualityData) bool {
 	mean := 50.0
 	stdDev := 10.0
 	zScore := (data.Value - mean) / stdDev
 	return math.Abs(zScore) > 3
 }
 
-func (a *AnomalyDetector) isTimeSeriesAnomalous(data models.AirQualityData) bool {
+func (a *Detector) isTimeSeriesAnomalous(data models.AirQualityData) bool {
 	return false
 }
 
-func (a *AnomalyDetector) isGeospatialAnomalous(data models.AirQualityData) bool {
+func (a *Detector) isGeospatialAnomalous(data models.AirQualityData) bool {
 	return false
 }
 
-func (a *AnomalyDetector) triggerAnomalyActions(data models.AirQualityData) {
+func (a *Detector) triggerAnomalyActions(data models.AirQualityData) {
 	a.markOnMap(data)
 
 	a.sendAlert(data)
 }
 
-func (a *AnomalyDetector) markOnMap(data models.AirQualityData) {
+func (a *Detector) markOnMap(data models.AirQualityData) {
 	fmt.Println("📍 Marking anomaly on map:", data)
 }
 
-func (a *AnomalyDetector) sendAlert(data models.AirQualityData) {
+func (a *Detector) sendAlert(data models.AirQualityData) {
 	fmt.Println("🚨 Sending alert to warning panel:", data)
 }

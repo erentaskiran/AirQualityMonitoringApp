@@ -5,6 +5,7 @@ import (
 	"api/internal/models"
 	"api/internal/notify"
 	"api/internal/repository"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -81,10 +82,31 @@ func (c *Consumer) StartConsumer() {
 				notify.NotifyAnomaly(data)
 			}
 
+			c.SaveToRedis(data)
 			airQualityRepository.SaveToDB(data)
 		}
 	}()
 
 	log.Println(" [*] Waiting for messages. To exit press CTRL+C")
 	<-forever
+}
+
+func (c *Consumer) SaveToRedis(m models.AirQualityData) error {
+	zKey := fmt.Sprintf("sensor:%s:z", m.Parameter)
+	timestamp := m.Timestamp.UnixMilli()
+	value := m.Value
+
+	// Redis'e veri eklemek için ZADD komutunu kullan
+	err := c.Redis.ZAdd(context.Background(), zKey, redis.Z{
+		Score:  float64(timestamp),
+		Member: value,
+	}).Err()
+
+	if err != nil {
+		fmt.Printf("Error saving data to Redis: %v\n", err)
+		return err
+	}
+
+	fmt.Printf("Data saved to Redis with key: %s, value: %v, timestamp: %v\n", zKey, value, timestamp)
+	return nil
 }

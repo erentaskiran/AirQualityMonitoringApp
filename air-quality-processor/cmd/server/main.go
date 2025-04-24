@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"os"
 
 	"api/internal/consumer"
@@ -38,6 +40,10 @@ func main() {
 	rdb := redis.NewClient(&redis.Options{
 		Addr: redisURL,
 	})
+
+	if err := rdb.Ping(context.Background()).Err(); err != nil {
+		log.Fatalf("cannot connect to redis: %v", err)
+	}
 
 	app := &app{
 		QueueConn: conn,
