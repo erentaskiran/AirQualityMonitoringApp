@@ -76,9 +76,9 @@ services:
     networks:
       - air-quality-network
 
-  processor-service:
+  mesurement-processor-service:
     build: ./air-quality-processor
-    container_name: processor-service
+    container_name: mesurement-processor-service
     restart: always
     depends_on:
       rabbitmq:
@@ -93,21 +93,35 @@ services:
       REDIS_URL: redis:6379
     networks:
       - air-quality-network
-#  frontend:
-#   build: ./frontend
-#   container_name: frontend
-#   restart: always
-#   ports:
-#     - "3000:3000"
-#   depends_on:
-#     rabbitmq:
-#       condition: service_healthy
-#     timescaledb:
-#       condition: service_healthy
-#     redis:
-#       condition: service_healthy
-#   networks:
-#     - air-quality-network
+  anomaly-processor-service:
+    build: ./anomaly-processor
+    container_name: anomaly-processor-service
+    restart: always
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      timescaledb:
+        condition: service_healthy
+    environment:
+      RABBITMQ_URL: amqp://user:password@rabbitmq:5672/
+      DATABASE_URL: postgres://postgres:password@timescaledb:5432/air_quality?sslmode=disable
+    networks:
+      - air-quality-network
+# frontend:
+#  build: ./frontend
+#  container_name: frontend
+#  restart: always
+#  ports:
+#    - "3000:3000"
+#  depends_on:
+#    rabbitmq:
+#      condition: service_healthy
+#    timescaledb:
+#      condition: service_healthy
+#    redis:
+#      condition: service_healthy
+#  networks:
+#    - air-quality-network
 
 
 networks:

@@ -19,7 +19,7 @@ func NewAirQualityRepository(db *sql.DB) *AirQualityRepository {
 
 func (c *AirQualityRepository) SaveToDB(data models.AirQualityData) {
 	_, err := c.Db.Exec(`
-		INSERT INTO air_quality (location, parameter, value)
+		INSERT INTO measurements (location, parameter, value)
 		VALUES (ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
 		        $3,
 		        $4)
@@ -36,10 +36,10 @@ func (c *AirQualityRepository) Get24HourDataForParameter(parameter string, latit
 			ST_X(location::geometry) AS longitude,
 			parameter,
 			value
-		FROM air_quality
+		FROM measurements
 		WHERE parameter = $1
 		  AND location = ST_SetSRID(ST_MakePoint($2, $3), 4326)::geography
-		  AND timestamp >= NOW() - INTERVAL '24 hours'
+		  AND time >= NOW() - INTERVAL '24 hours'
 	`
 	rows, err := c.Db.Query(query, parameter, longitude, latitude) // lon, lat!!
 	if err != nil {
@@ -65,10 +65,10 @@ func (c *AirQualityRepository) Get8HourDataForParameter(parameter string, latitu
 			ST_X(location::geometry) AS longitude,
 			parameter,
 			value
-		FROM air_quality
+		FROM measurements
 		WHERE parameter = $1
 		  AND location = ST_SetSRID(ST_MakePoint($2, $3), 4326)::geography
-		  AND timestamp >= NOW() - INTERVAL '8 hours'
+		  AND time >= NOW() - INTERVAL '8 hours'
 	`
 	rows, err := c.Db.Query(query, parameter, longitude, latitude)
 	if err != nil {
