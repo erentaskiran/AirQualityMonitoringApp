@@ -8,30 +8,15 @@ import (
 	"fmt"
 	"math"
 	"time"
-
-	"github.com/redis/go-redis/v9"
 )
-
-//go:embed window.lua
-var luaScript string
 
 type Detector struct {
-	db     *sql.DB
-	rdb    *redis.Client
-	script *redis.Script
+	db *sql.DB
 }
 
-const (
-	window   = 24 * time.Hour
-	zKeyTmpl = "sensor:%s:z"  // per‑sensor zset
-	rollTmpl = "sensor:%s:hp" // per‑sensor hash (sum,count)
-)
-
-func NewAnomalyDetector(rdb *redis.Client, db *sql.DB) *Detector {
+func NewAnomalyDetector(db *sql.DB) *Detector {
 	return &Detector{
-		db:     db,
-		rdb:    rdb,
-		script: redis.NewScript(luaScript),
+		db: db,
 	}
 }
 
@@ -40,12 +25,12 @@ func (d *Detector) IsAnomalous(data models.AirQualityData) bool {
 
 	var cutoff int64
 	if data.Parameter == "O3" {
-		cutoff = data.Timestamp.Add(-window / 3).UnixMilli()
+		cutoff = data.Timestamp.Add(-8 * time.Hour).UnixMilli()
 	} else {
-		cutoff = data.Timestamp.Add(-window).UnixMilli()
+		cutoff = data.Timestamp.Add(-24 * time.Hour).UnixMilli()
 	}
 
-	sum, count, err := d.fetchDataFromCacheOrDB(ctx, data.Parameter, cutoff)
+	sum, count, err := d.fetchDataFromDB(ctx, data.Parameter, cutoff)
 	if err != nil {
 		fmt.Println("Error fetching data:", err)
 		return false
@@ -91,25 +76,7 @@ func (d *Detector) IsAnomalous(data models.AirQualityData) bool {
 	return false
 }
 
-func (d *Detector) fetchDataFromCacheOrDB(ctx context.Context, parameter string, cutoff int64) (int64, int64, error) {
-	zKey := fmt.Sprintf(zKeyTmpl, parameter)
-	rollUp := fmt.Sprintf(rollTmpl, parameter)
-
-	// Try to fetch data from Redis
-	res, err := d.script.Run(ctx, d.rdb, []string{zKey, rollUp}, cutoff).Result()
-	if err == nil {
-		arr, ok := res.([]interface{})
-		if ok && len(arr) == 2 {
-			sum, ok1 := arr[0].(int64)
-			count, ok2 := arr[1].(int64)
-			if ok1 && ok2 {
-				return sum, count, nil
-			}
-		}
-	}
-
-	// If Redis fetch fails, fallback to DB
-	fmt.Println("Data not found in Redis, fetching from DB...")
+func (d *Detector) fetchDataFromDB(ctx context.Context, parameter string, cutoff int64) (int64, int64, error) {
 	query := `
 	SELECT COALESCE(SUM(value), 0) AS sum, COALESCE(SUM(value), 0) AS count 
 	FROM measurements 
@@ -121,12 +88,6 @@ func (d *Detector) fetchDataFromCacheOrDB(ctx context.Context, parameter string,
 	var count int64
 	if err := row.Scan(&sum, &count); err != nil {
 		return 0, 0, err
-	}
-
-	// Write the fetched data back to Redis
-	_, err = d.rdb.HSet(ctx, rollUp, "sum", sum, "count", count).Result()
-	if err != nil {
-		fmt.Println("Failed to write data to Redis:", err)
 	}
 
 	return sum, count, nil
@@ -145,21 +106,16 @@ func (a *Detector) CheckTreshold(parameter string, value float64) bool {
 }
 
 func (a *Detector) isZScoreAnomalous(data models.AirQualityData, mean, count float64) bool {
-	// Standard deviation approximation using Redis data
-	stdDev := math.Sqrt(mean) // Simplified for demonstration
+	stdDev := math.Sqrt(mean)
 	zScore := (data.Value - mean) / stdDev
 	return math.Abs(zScore) > 3
 }
 
 func (a *Detector) isTimeSeriesAnomalous(data models.AirQualityData) bool {
-	// Placeholder for time series analysis logic
-	// Implement ARIMA, Holt-Winters, or other methods here
 	return false
 }
 
 func (a *Detector) isGeospatialAnomalous(data models.AirQualityData) bool {
-	// Placeholder for geospatial anomaly detection
-	// Compare with nearby sensors within a 25km radius
 	return false
 }
 
