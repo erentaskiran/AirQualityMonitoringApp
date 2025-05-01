@@ -73,6 +73,8 @@ services:
     build: ./anomaly-processor
     container_name: anomaly-processor-service
     restart: always
+    ports:
+     - "8000:8000"
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -83,21 +85,19 @@ services:
       DATABASE_URL: postgres://postgres:password@timescaledb:5432/air_quality?sslmode=disable
     networks:
       - air-quality-network
-# frontend:
-#  build: ./frontend
-#  container_name: frontend
-#  restart: always
-#  ports:
-#    - "3000:3000"
-#  depends_on:
-#    rabbitmq:
-#      condition: service_healthy
-#    timescaledb:
-#      condition: service_healthy
-#    redis:
-#      condition: service_healthy
-#  networks:
-#    - air-quality-network
+  frontend:
+   build: ./frontend
+   container_name: frontend
+   restart: always
+   ports:
+     - "3000:3000"
+   depends_on:
+     rabbitmq:
+       condition: service_healthy
+     timescaledb:
+       condition: service_healthy
+   networks:
+     - air-quality-network
 
 
 networks:
