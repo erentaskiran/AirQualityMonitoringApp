@@ -22,8 +22,8 @@ export LC_ALL=C           # ← Sayılarda ondalık ayırıcı hep "."
 duration=60
 rate=5
 anomaly_chance=0.15
-center_lat=41
-center_lon=29
+center_lat=40.7
+center_lon=30
 radius_km=25
 url="http://localhost:8080/api/ingest"
 

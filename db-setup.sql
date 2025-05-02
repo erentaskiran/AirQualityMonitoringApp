@@ -23,3 +23,17 @@ CREATE INDEX IF NOT EXISTS idx_measurements_geom
 
 -- Convert to Timescale hypertable (creates chunks by time)
 SELECT create_hypertable('measurements', 'time', if_not_exists => TRUE);
+
+-- Table to store detected anomalies
+CREATE TABLE IF NOT EXISTS anomalies (
+    id          SERIAL PRIMARY KEY,
+    parameter   TEXT             NOT NULL,
+    value       DOUBLE PRECISION NOT NULL,
+    time        TIMESTAMPTZ      NOT NULL DEFAULT now(),
+    location    geography(Point, 4326),
+    description TEXT             NOT NULL
+);
+
+-- Spatial index for anomalies table
+CREATE INDEX IF NOT EXISTS idx_anomalies_geom
+    ON anomalies USING GIST (location);
