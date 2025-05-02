@@ -24,38 +24,49 @@ export default function Home() {
   useEffect(() => {
     if (!location) return;
 
-    const socket = new WebSocket("ws://localhost:8000/ws/anomalys");
+    // WebSocket for historical anomalies
+    const historySocket = new WebSocket("ws://localhost:8000/ws/anomalys");
 
-    socket.onmessage = (event) => {
-      const receivedAnomalies = JSON.parse(event.data);
-      setAnomalies(receivedAnomalies);
+    historySocket.onmessage = (event) => {
+      const receivedData = JSON.parse(event.data);
+
+      if (Array.isArray(receivedData)) {
+        // Initial anomalies from the last 2 hours
+        setAnomalies(receivedData);
+      }
     };
 
-    socket.onerror = (error) => {
-      console.error("WebSocket error:", error);
+    historySocket.onerror = (error) => {
+      console.error("WebSocket error (history):", error);
     };
 
-    socket.onclose = () => {
-      console.log("WebSocket connection closed");
+    historySocket.onclose = () => {
+      console.log("WebSocket connection (history) closed");
+    };
+
+    // WebSocket for live anomalies
+    const liveSocket = new WebSocket("ws://localhost:8000/ws/live");
+
+    liveSocket.onmessage = (event) => {
+      const receivedData = JSON.parse(event.data);
+
+      // Live anomaly data
+      setAnomalies((prevAnomalies) => [...prevAnomalies, receivedData]);
+    };
+
+    liveSocket.onerror = (error) => {
+      console.error("WebSocket error (live):", error);
+    };
+
+    liveSocket.onclose = () => {
+      console.log("WebSocket connection (live) closed");
     };
 
     return () => {
-      socket.close();
+      historySocket.close();
+      liveSocket.close();
     };
   }, [location]);
-
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-    const toRad = (value: number) => (value * Math.PI) / 180;
-    const R = 6371; // Earth's radius in km
-    const dLat = toRad(lat2 - lat1);
-    const dLon = toRad(lon2 - lon1);
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-      Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c; // Distance in km
-  };
 
   return (
     <div>

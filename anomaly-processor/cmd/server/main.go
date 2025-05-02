@@ -48,7 +48,7 @@ func main() {
 	go consumer.StartConsumer()
 	fmt.Println("Consumer started")
 
-	http.HandleFunc("/ws", app.WsServer.WsHandler)
+	http.HandleFunc("/ws/live", app.WsServer.WsHandler)
 	http.HandleFunc("/ws/anomalys", app.WsServer.WsHandlerAnomaly)
 	fmt.Println("Websocket server running at :8000")
 	log.Fatal(http.ListenAndServe(":8000", nil))
