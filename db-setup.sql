@@ -7,23 +7,6 @@ CREATE TABLE IF NOT EXISTS measurements (
     value       DOUBLE PRECISION NOT NULL,
     time        TIMESTAMPTZ      NOT NULL DEFAULT now()
 );
-
--- Add PostGIS geography column (Point, WGS‑84)
-ALTER TABLE measurements
-    ADD COLUMN IF NOT EXISTS location geography(Point, 4326);
-
--- Back‑fill existing rows
-UPDATE measurements
-    SET location = ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)
-    WHERE location IS NULL;
-
--- Spatial index for fast geo queries
-CREATE INDEX IF NOT EXISTS idx_measurements_geom
-    ON measurements USING GIST (location);
-
--- Convert to Timescale hypertable (creates chunks by time)
-SELECT create_hypertable('measurements', 'time', if_not_exists => TRUE);
-
 -- Table to store detected anomalies
 CREATE TABLE IF NOT EXISTS anomalies (
     id          SERIAL PRIMARY KEY,
@@ -33,6 +16,18 @@ CREATE TABLE IF NOT EXISTS anomalies (
     location    geography(Point, 4326),
     description TEXT             NOT NULL
 );
+
+-- Add PostGIS geography column (Point, WGS‑84)
+ALTER TABLE measurements
+    ADD COLUMN IF NOT EXISTS location geography(Point, 4326);
+
+-- Spatial index for fast geo queries
+CREATE INDEX IF NOT EXISTS idx_measurements_geom
+    ON measurements USING GIST (location);
+
+-- Convert to Timescale hypertable (creates chunks by time)
+SELECT create_hypertable('measurements', 'time', if_not_exists => TRUE);
+
 
 -- Spatial index for anomalies table
 CREATE INDEX IF NOT EXISTS idx_anomalies_geom
