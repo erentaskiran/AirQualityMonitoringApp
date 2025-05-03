@@ -70,6 +70,7 @@ export default function Home() {
             return false;
           });
           setAnomalies(filteredAnomalies);
+          console.log("Filtered historical anomalies:", filteredAnomalies);
         }
       } catch (error) {
         console.error("Error parsing history data:", error);
@@ -152,7 +153,7 @@ export default function Home() {
                 <Popup>
                   <strong>{anomaly.parameter}</strong>: {anomaly.value}
                   <br />
-                  Time: {new Date(anomaly.time).toLocaleString()}
+                  Time: {new Date(anomaly.time).toLocaleDateString()} {new Date(anomaly.time).toLocaleTimeString()}
                   <br />
                   Description: {anomaly.description}
                 </Popup>

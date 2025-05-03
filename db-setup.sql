@@ -2,10 +2,11 @@ CREATE EXTENSION IF NOT EXISTS postgis;
 
 -- Main measurements table (raw ingestion)
 CREATE TABLE IF NOT EXISTS measurements (
-    id          SERIAL PRIMARY KEY,
+    id          SERIAL,
     parameter   TEXT             NOT NULL,
     value       DOUBLE PRECISION NOT NULL,
-    time        TIMESTAMPTZ      NOT NULL DEFAULT now()
+    time        TIMESTAMPTZ      NOT NULL DEFAULT now(),
+    PRIMARY KEY (id, time)
 );
 -- Table to store detected anomalies
 CREATE TABLE IF NOT EXISTS anomalies (

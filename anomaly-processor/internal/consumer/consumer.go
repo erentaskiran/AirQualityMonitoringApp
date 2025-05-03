@@ -56,9 +56,17 @@ func (c *Consumer) StartConsumer() {
 	}
 	anomalyRepository := repository.NewAnomalyRepository(c.Db)
 
-	for msg := range msgs {
-		log.Printf("Received message: %s", msg.Body)
-		anomalyRepository.SaveAnomalyToDB(msg.Body)
-		c.WsServer.BroadcastToClients(msg.Body)
-	}
+	forever := make(chan bool)
+
+	go func() {
+		for msg := range msgs {
+			log.Printf("Received message: %s", msg.Body)
+			anomalyRepository.SaveAnomalyToDB(msg.Body)
+			c.WsServer.BroadcastToClients(msg.Body)
+		}
+	}()
+
+	log.Println(" [*] Waiting for messages. To exit press CTRL+C")
+	<-forever
+
 }

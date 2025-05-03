@@ -18,7 +18,7 @@ func NewNotify(queueConn *amqp.Connection) *Notify {
 	}
 }
 
-func (n *Notify) NotifyAnomaly(data models.AirQualityData) {
+func (n *Notify) NotifyAnomaly(data models.AirQualityData, reason string) {
 	ch, err := n.QueueConn.Channel()
 	if err != nil {
 		log.Fatalf("Failed to open a channel: %s", err)
@@ -37,7 +37,16 @@ func (n *Notify) NotifyAnomaly(data models.AirQualityData) {
 		log.Fatalf("Failed to declare a queue: %s", err)
 	}
 
-	body, _ := json.Marshal(data)
+	alert := models.AnomalyData{
+		Parameter:   data.Parameter,
+		Value:       data.Value,
+		Timestamp:   data.Timestamp,
+		Latitude:    data.Latitude,
+		Longitude:   data.Longitude,
+		Description: reason,
+	}
+
+	body, _ := json.Marshal(alert)
 	err = ch.Publish(
 		"",
 		q.Name,

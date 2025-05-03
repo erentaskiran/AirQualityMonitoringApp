@@ -20,7 +20,7 @@ func NewAnomalyDetector(db *sql.DB) *Detector {
 	}
 }
 
-func (d *Detector) IsAnomalous(data models.AirQualityData) bool {
+func (d *Detector) IsAnomalous(data models.AirQualityData) (string, bool) {
 	ctx := context.Background()
 
 	var cutoff int64
@@ -33,47 +33,57 @@ func (d *Detector) IsAnomalous(data models.AirQualityData) bool {
 	sum, count, err := d.fetchDataFromDB(ctx, data.Parameter, cutoff)
 	if err != nil {
 		fmt.Println("Error fetching data:", err)
-		return false
+		return "", false
+	}
+
+	// WHO threshold check
+	if d.CheckTreshold(data.Parameter, data.Value) {
+		reason := "Threshold"
+		fmt.Printf("⚠️ Anomaly Detected (%s): %v\n", reason, data)
+		d.triggerAnomalyActions(data, reason)
+		return reason, true
+	}
+
+	// Avoid division by zero if count is 0
+	if count == 0 {
+		return "", false
 	}
 
 	average := float64(sum) / float64(count)
 
-	// WHO threshold check
-	if d.CheckTreshold(data.Parameter, data.Value) {
-		fmt.Println("⚠️ Anomaly Detected (Threshold):", data)
-		d.triggerAnomalyActions(data)
-		return true
-	}
-
 	// Percentage increase check
 	if data.Value > average*1.5 {
-		fmt.Println("⚠️ Anomaly Detected (Percentage Increase):", data)
-		d.triggerAnomalyActions(data)
-		return true
+		reason := "Percentage Increase"
+		fmt.Printf("⚠️ Anomaly Detected (%s): %v\n", reason, data)
+		d.triggerAnomalyActions(data, reason)
+		return reason, true
 	}
 
 	// Z-score-based detection
 	if d.isZScoreAnomalous(data, average, float64(count)) {
-		fmt.Println("⚠️ Anomaly Detected (Z-score):", data)
-		d.triggerAnomalyActions(data)
-		return true
+		reason := "Z-score"
+		fmt.Printf("⚠️ Anomaly Detected (%s): %v\n", reason, data)
+		d.triggerAnomalyActions(data, reason)
+		return reason, true
 	}
 
 	// Time series analysis
 	if d.isTimeSeriesAnomalous(data) {
-		fmt.Println("⚠️ Anomaly Detected (Time Series):", data)
-		d.triggerAnomalyActions(data)
-		return true
+		reason := "Time Series"
+		fmt.Printf("⚠️ Anomaly Detected (%s): %v\n", reason, data)
+		d.triggerAnomalyActions(data, reason)
+		return reason, true
 	}
 
 	// Geospatial anomaly detection
 	if d.isGeospatialAnomalous(data) {
-		fmt.Println("⚠️ Anomaly Detected (Geospatial):", data)
-		d.triggerAnomalyActions(data)
-		return true
+		reason := "Geospatial"
+		fmt.Printf("⚠️ Anomaly Detected (%s): %v\n", reason, data)
+		d.triggerAnomalyActions(data, reason)
+		return reason, true
 	}
 
-	return false
+	return "", false
 }
 
 func (d *Detector) fetchDataFromDB(ctx context.Context, parameter string, cutoff int64) (int64, int64, error) {
@@ -119,16 +129,15 @@ func (a *Detector) isGeospatialAnomalous(data models.AirQualityData) bool {
 	return false
 }
 
-func (a *Detector) triggerAnomalyActions(data models.AirQualityData) {
-	a.markOnMap(data)
-
-	a.sendAlert(data)
+func (a *Detector) triggerAnomalyActions(data models.AirQualityData, reason string) {
+	a.markOnMap(data, reason)
+	a.sendAlert(data, reason)
 }
 
-func (a *Detector) markOnMap(data models.AirQualityData) {
-	fmt.Println("📍 Marking anomaly on map:", data)
+func (a *Detector) markOnMap(data models.AirQualityData, reason string) {
+	fmt.Printf("📍 Marking anomaly on map (%s): %v\n", reason, data)
 }
 
-func (a *Detector) sendAlert(data models.AirQualityData) {
-	fmt.Println("🚨 Sending alert to warning panel:", data)
+func (a *Detector) sendAlert(data models.AirQualityData, reason string) {
+	fmt.Printf("🚨 Sending alert to warning panel (%s): %v\n", reason, data)
 }

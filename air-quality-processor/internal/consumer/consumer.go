@@ -73,9 +73,9 @@ func (c *Consumer) StartConsumer() {
 
 			fmt.Printf("Received a message: %+v\n", data)
 
-			if AnomalyDetector.IsAnomalous(data) {
+			if reason, ok := AnomalyDetector.IsAnomalous(data); ok {
 				fmt.Println("⚠️ Anomaly detected!", data)
-				notify.NotifyAnomaly(data)
+				notify.NotifyAnomaly(data, reason)
 			}
 
 			airQualityRepository.SaveToDB(data)
