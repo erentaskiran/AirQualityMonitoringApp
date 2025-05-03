@@ -32,7 +32,7 @@ fi
 
 
 # Send request using curl
-curl -X POST "http://localhost:8080/api/ingest" \
+curl -X POST "http://localhost:8000/api/ingest" \
      -H "Content-Type: application/json" \
      -d "{
           \"latitude\": \"$1\",

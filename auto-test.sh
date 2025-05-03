@@ -25,7 +25,7 @@ anomaly_chance=0.15
 center_lat=40.7
 center_lon=30
 radius_km=25
-url="http://localhost:8080/api/ingest"
+url="http://localhost:8000/api/ingest"
 
 ######################## 3) Argümantaları ayrıştır ###########################
 for arg in "$@"; do

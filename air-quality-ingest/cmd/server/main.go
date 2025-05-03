@@ -22,7 +22,7 @@ func main() {
 
 	time.Sleep(10 * time.Second)
 
-	port := ":8080"
+	port := ":8000"
 
 	conn, err := amqp.Dial(rabbitMQURL)
 	if err != nil {

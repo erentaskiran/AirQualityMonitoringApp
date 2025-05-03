@@ -49,61 +49,29 @@ export default function Home() {
   useEffect(() => {
     if (!location) return;
 
-    // WebSocket for historical anomalies
-    const historySocket = new WebSocket("ws://localhost:8000/ws/anomalys");
-
-    historySocket.onmessage = (event) => {
-      try {
-        const receivedData = JSON.parse(event.data);
-        if (Array.isArray(receivedData)) {
-          // Filter anomalies within 25km radius
-          const filteredAnomalies = receivedData.filter((anomaly: any) => {
-            if (anomaly.latitude && anomaly.longitude) {
-              const distance = calculateDistance(
-                location.latitude,
-                location.longitude,
-                anomaly.latitude,
-                anomaly.longitude
-              );
-              return distance <= 25; // 25km radius
-            }
-            return false;
-          });
-          setAnomalies(filteredAnomalies);
-          console.log("Filtered historical anomalies:", filteredAnomalies);
-        }
-      } catch (error) {
-        console.error("Error parsing history data:", error);
-      }
-    };
-
-    historySocket.onerror = (error) => {
-      console.error("WebSocket error (history):", error);
-    };
-
-    historySocket.onclose = () => {
-      console.log("WebSocket connection (history) closed");
-    };
-
     // WebSocket for live anomalies
-    const liveSocket = new WebSocket("ws://localhost:8000/ws/live"); // Assuming /ws sends live data
+    const liveSocket = new WebSocket("ws://localhost:8080/ws/live");
 
     liveSocket.onmessage = (event) => {
       try {
         const receivedData = JSON.parse(event.data);
-        // Check if it's a single anomaly object and has location
-        if (receivedData && typeof receivedData === 'object' && !Array.isArray(receivedData) && receivedData.latitude && receivedData.longitude) {
-          // Filter live anomaly within 25km radius
-          const distance = calculateDistance(
-            location.latitude,
-            location.longitude,
-            receivedData.latitude,
-            receivedData.longitude
-          );
-          if (distance <= 25) {
-            setAnomalies((prevAnomalies) => [...prevAnomalies, receivedData]);
+        console.log("Received live data:", receivedData);
+        
+        const dataItems = Array.isArray(receivedData) ? receivedData : [receivedData];
+        
+        dataItems.forEach(item => {
+          if (item && typeof item === 'object' && item.latitude && item.longitude) {
+            const distance = calculateDistance(
+              location.latitude,
+              location.longitude,
+              item.latitude,
+              item.longitude
+            );
+            if (distance <= 25) {
+              setAnomalies((prevAnomalies) => [...prevAnomalies, item]);
+            }
           }
-        }
+        });
       } catch (error) {
         console.error("Error parsing live data:", error);
       }
@@ -118,7 +86,6 @@ export default function Home() {
     };
 
     return () => {
-      historySocket.close();
       liveSocket.close();
     };
   }, [location]);

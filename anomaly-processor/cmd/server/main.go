@@ -3,10 +3,10 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"log"
-	"net/http"
 	"os"
+	"sync"
 
+	"api/internal/api"
 	"api/internal/consumer"
 	websocketserver "api/internal/websocket"
 	"api/pkg/db"
@@ -21,6 +21,7 @@ type app struct {
 	Db        *sql.DB
 	Clients   map[*websocket.Conn]bool
 	WsServer  *websocketserver.WebsocketServer
+	Api       *api.Api
 }
 
 func main() {
@@ -38,24 +39,38 @@ func main() {
 	Db := db.InitDB(dbURL)
 	defer Db.Close()
 
+	clients := make(map[*websocket.Conn]bool)
 	app := &app{
 		QueueConn: conn,
 		Db:        Db,
-		WsServer:  websocketserver.NewWebsocketServer(Db, make(map[*websocket.Conn]bool)),
+		Clients:   clients,
+		WsServer:  websocketserver.NewWebsocketServer(Db, clients),
+		Api:       api.NewApi(Db),
 	}
 
+	// Start consumer
 	consumer := consumer.NewConsumer(app.QueueConn, app.Db, app.WsServer)
 	go consumer.StartConsumer()
 	fmt.Println("Consumer started")
 
-	http.HandleFunc("/ws/live", app.WsServer.WsHandler)
-	http.HandleFunc("/ws/anomalys", app.WsServer.WsHandlerAnomaly)
+	// Use wait group to keep the application running while goroutines handle servers
+	var wg sync.WaitGroup
+	wg.Add(2)
 
-	// New HTTP API Endpoints
-	http.HandleFunc("/api/anomalies/location", app.WsServer.AnomaliesByLocationHandler)   // GET /api/anomalies/location?lat=...&lon=...&radius=...
-	http.HandleFunc("/api/anomalies/timerange", app.WsServer.AnomaliesByTimeRangeHandler) // GET /api/anomalies/timerange?start=...&end=...
-	http.HandleFunc("/api/anomalies/density", app.WsServer.AnomalyDensityHandler)         // GET /api/anomalies/density?minLat=...&minLon=...&maxLat=...&maxLon=...
+	// Start WebSocket server
+	go func() {
+		defer wg.Done()
+		app.WsServer.StartWebsocketServer()
+	}()
+	fmt.Println("WebSocket server starting on port 8080")
 
-	fmt.Println("Websocket and API server running at :8000")
-	log.Fatal(http.ListenAndServe(":8000", nil))
+	// Start API server
+	go func() {
+		defer wg.Done()
+		app.Api.StartApi()
+	}()
+	fmt.Println("API server starting on port 8081")
+
+	// Wait for both servers (they won't actually return unless they crash)
+	wg.Wait()
 }
