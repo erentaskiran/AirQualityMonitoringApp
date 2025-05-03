@@ -11,6 +11,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
+import { MakeRequest } from '@/lib/utils';
 
 interface AnomalyData {
   time: string; // Keep as string initially
@@ -32,17 +33,32 @@ export default function ChartsPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const ws = new WebSocket("ws://localhost:8000/ws/anomalys");
     setLoading(true);
     setError(null);
-
-    ws.onopen = () => {
-      console.log("WebSocket connection (anomalies for charts) opened");
-    };
-
-    ws.onmessage = (event) => {
+    
+    // Calculate timerange - last 24 hours
+    const endTime = new Date().toISOString();
+    const startTime = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    
+    // Fetch anomalies from API instead of WebSocket
+    const fetchAnomalies = async () => {
       try {
-        const receivedData: AnomalyData[] = JSON.parse(event.data);
+        const response = await MakeRequest(
+          'api/anomalies/timerange', 
+          "GET", 
+          null, 
+          {
+            "X-Start-Time": startTime,
+            "X-End-Time": endTime
+          }
+        );
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const receivedData = await response.json();
+        
         if (Array.isArray(receivedData)) {
           const processedData = receivedData
             .map(item => {
@@ -60,35 +76,24 @@ export default function ChartsPage() {
           setChartData(processedData);
           console.log("Processed chart data:", processedData);
         } else {
-             console.warn("Received non-array data from WebSocket:", receivedData);
-             setError("Received unexpected data format.");
+          console.warn("Received non-array data from API:", receivedData);
+          setError("Received unexpected data format.");
         }
-        setLoading(false);
       } catch (err) {
-        console.error("Error processing WebSocket data:", err);
-        setError("Failed to process data.");
+        console.error("Error fetching anomalies:", err);
+        setError(`Failed to fetch anomaly data: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      } finally {
         setLoading(false);
       }
     };
-
-    ws.onerror = (err) => {
-      console.error("WebSocket error (anomalies for charts):", err);
-      setError("WebSocket connection error.");
-      setLoading(false);
-    };
-
-    ws.onclose = () => {
-      console.log("WebSocket connection (anomalies for charts) closed");
-      // Optionally handle reconnection or set loading state
-       if (loading) { // If it closes before receiving data
-           setError("WebSocket connection closed before receiving data.");
-           setLoading(false);
-       }
-    };
-
-    // Cleanup function
+    
+    fetchAnomalies();
+    
+    // Optional: Set up polling to refresh data
+    const intervalId = setInterval(fetchAnomalies, 30000); // Refresh every 30 seconds
+    
     return () => {
-      ws.close();
+      clearInterval(intervalId);
     };
   }, []); // Run only once
 

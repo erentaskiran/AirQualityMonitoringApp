@@ -20,11 +20,30 @@ func NewApi(Db *sql.DB) *Api {
 	}
 }
 
+// CORS middleware to handle preflight requests and add necessary headers
+func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Set CORS headers
+		w.Header().Set("Access-Control-Allow-Origin", "*") // Allow requests from any origin
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Start-Time, X-End-Time")
+
+		// Handle preflight requests
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		// Call the next handler
+		next(w, r)
+	}
+}
+
 func (a *Api) StartApi() {
-	// Define API routes
-	http.HandleFunc("/api/anomalies/location", a.AnomaliesByLocationHandler)
-	http.HandleFunc("/api/anomalies/timerange", a.AnomaliesByTimeRangeHandler)
-	http.HandleFunc("/api/anomalies/density", a.AnomalyDensityHandler)
+	// Define API routes with CORS middleware
+	http.HandleFunc("/api/anomalies/location", corsMiddleware(a.AnomaliesByLocationHandler))
+	http.HandleFunc("/api/anomalies/timerange", corsMiddleware(a.AnomaliesByTimeRangeHandler))
+	http.HandleFunc("/api/anomalies/density", corsMiddleware(a.AnomalyDensityHandler))
 
 	// Start HTTP server
 	log.Println("Starting API server on port 8081...")
@@ -66,11 +85,11 @@ func (a *Api) AnomaliesByLocationHandler(w http.ResponseWriter, r *http.Request)
 
 // HTTP handler for getting anomalies by time range
 func (a *Api) AnomaliesByTimeRangeHandler(w http.ResponseWriter, r *http.Request) {
-	startTimeStr := r.URL.Query().Get("start") // Expected format: RFC3339 or similar parseable by time.Parse
-	endTimeStr := r.URL.Query().Get("end")
+	startTimeStr := r.Header.Get("X-Start-Time") // Expected format: RFC3339 or similar parseable by time.Parse
+	endTimeStr := r.Header.Get("X-End-Time")
 
 	if startTimeStr == "" || endTimeStr == "" {
-		utils.WriteJSONError(w, http.StatusBadRequest, "Missing required query parameters: start, end")
+		utils.WriteJSONError(w, http.StatusBadRequest, "Missing required query parameters: X-Start-Time, X-End-Time")
 		return
 	}
 

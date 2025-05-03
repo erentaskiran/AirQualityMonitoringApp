@@ -8,18 +8,14 @@ const TileLayer = dynamic(() => import('react-leaflet').then((mod) => mod.TileLa
 const Marker = dynamic(() => import('react-leaflet').then((mod) => mod.Marker), { ssr: false });
 const Popup = dynamic(() => import('react-leaflet').then((mod) => mod.Popup), { ssr: false });
 
-// Import Leaflet CSS
 import 'leaflet/dist/leaflet.css';
-// NOTE: Do not import L directly here to avoid SSR issues
 
 export default function Home() {
   const [anomalies, setAnomalies] = useState<any[]>([]);
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
 
   useEffect(() => {
-    // This code runs only on the client
     import('leaflet').then(L => {
-      // Fix for default icon issue with Webpack
       delete (L.Icon.Default.prototype as any)._getIconUrl;
 
       L.Icon.Default.mergeOptions({
@@ -40,7 +36,6 @@ export default function Home() {
       },
       (error) => {
         console.error("Error fetching location:", error);
-        // Fallback location if geolocation fails or is denied
         setLocation({ latitude: 41.0, longitude: 29.0 }); // Default to Istanbul
       }
     );
@@ -49,7 +44,6 @@ export default function Home() {
   useEffect(() => {
     if (!location) return;
 
-    // WebSocket for live anomalies
     const liveSocket = new WebSocket("ws://localhost:8080/ws/live");
 
     liveSocket.onmessage = (event) => {
