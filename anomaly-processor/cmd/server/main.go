@@ -50,6 +50,12 @@ func main() {
 
 	http.HandleFunc("/ws/live", app.WsServer.WsHandler)
 	http.HandleFunc("/ws/anomalys", app.WsServer.WsHandlerAnomaly)
-	fmt.Println("Websocket server running at :8000")
+
+	// New HTTP API Endpoints
+	http.HandleFunc("/api/anomalies/location", app.WsServer.AnomaliesByLocationHandler)   // GET /api/anomalies/location?lat=...&lon=...&radius=...
+	http.HandleFunc("/api/anomalies/timerange", app.WsServer.AnomaliesByTimeRangeHandler) // GET /api/anomalies/timerange?start=...&end=...
+	http.HandleFunc("/api/anomalies/density", app.WsServer.AnomalyDensityHandler)         // GET /api/anomalies/density?minLat=...&minLon=...&maxLat=...&maxLon=...
+
+	fmt.Println("Websocket and API server running at :8000")
 	log.Fatal(http.ListenAndServe(":8000", nil))
 }
