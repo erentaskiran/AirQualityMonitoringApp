@@ -7,8 +7,8 @@ services:
       - "5672:5672"
       - "15673:15672"
     environment:
-      RABBITMQ_DEFAULT_USER: user
-      RABBITMQ_DEFAULT_PASS: password
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
     networks:
       - air-quality-network
     healthcheck:
@@ -24,16 +24,16 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: air_quality
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - ./db-setup.sql:/docker-entrypoint-initdb.d/setup.sql
       - timescale_data:/var/lib/postgresql/data
     networks:
       - air-quality-network
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "postgres"]
+      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -50,8 +50,8 @@ services:
       timescaledb:
         condition: service_healthy
     environment:
-      RABBITMQ_URL: amqp://user:password@rabbitmq:5672/
-      DATABASE_URL: postgres://postgres:password@timescaledb:5432/air_quality?sslmode=disable
+      RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672/
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@timescaledb:5432/${POSTGRES_DB}?sslmode=disable
     networks:
       - air-quality-network
 
@@ -65,8 +65,8 @@ services:
       timescaledb:
         condition: service_healthy
     environment:
-      RABBITMQ_URL: amqp://user:password@rabbitmq:5672/
-      DATABASE_URL: postgres://postgres:password@timescaledb:5432/air_quality?sslmode=disable
+      RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672/
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@timescaledb:5432/${POSTGRES_DB}?sslmode=disable
     networks:
       - air-quality-network
 
@@ -83,8 +83,8 @@ services:
       timescaledb:
         condition: service_healthy
     environment:
-      RABBITMQ_URL: amqp://user:password@rabbitmq:5672/
-      DATABASE_URL: postgres://postgres:password@timescaledb:5432/air_quality?sslmode=disable
+      RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672/
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@timescaledb:5432/${POSTGRES_DB}?sslmode=disable
     networks:
       - air-quality-network
 
