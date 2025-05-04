@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { MakeRequest } from '@/lib/utils';
 
 interface DensityData {
   [gridKey: string]: number; // e.g., "41.01_29.05": 5
@@ -37,8 +38,8 @@ export default function AnalysisPage() {
     });
 
     try {
-      // Assuming anomaly-processor runs on localhost:8000
-      const response = await fetch(`http://localhost:8000/api/anomalies/density?${params.toString()}`);
+      // Use MakeRequest utility with query parameters
+      const response = await fetch(`http://localhost:8081/api/anomalies/density?${params.toString()}`);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: `HTTP error! status: ${response.status}` }));

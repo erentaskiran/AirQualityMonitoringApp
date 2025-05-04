@@ -171,7 +171,10 @@ func (r *AnomalyRepository) GetAnomalyDensityByRegion(minLat, minLon, maxLat, ma
 			   ROUND(ST_Y(location::geometry)::numeric, 2) AS grid_lat,
 			   ROUND(ST_X(location::geometry)::numeric, 2) AS grid_lon
 		FROM anomalies
-		WHERE ST_MakeEnvelope($1, $2, $3, $4, 4326) @> location::geometry -- Check if location is within the envelope
+		WHERE ST_Contains(
+			ST_MakeEnvelope($1, $2, $3, $4, 4326), 
+			location::geometry
+		) -- Check if location is within the envelope
 		GROUP BY grid_lat, grid_lon;`
 
 	rows, err := r.Db.Query(query, minLon, minLat, maxLon, maxLat) // Note: ST_MakeEnvelope uses minLon, minLat, maxLon, maxLat
