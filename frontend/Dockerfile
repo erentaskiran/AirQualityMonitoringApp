@@ -14,7 +14,7 @@ FROM base as production
 WORKDIR /app
 
 ENV NODE_ENV=production
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nextjs -u 1001
@@ -30,6 +30,6 @@ CMD npm start
 
 FROM base as dev
 ENV NODE_ENV=development
-RUN npm install 
+RUN npm install --legacy-peer-deps
 COPY . .
 CMD npm run dev
