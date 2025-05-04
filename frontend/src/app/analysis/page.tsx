@@ -59,8 +59,8 @@ export default function AnalysisPage() {
   };
 
   return (
-    <div>
-      <h1>Regional Anomaly Analysis</h1>
+    <div className="w-full max-w-4xl mx-auto px-4">
+      <h1 className="text-2xl font-bold mt-6 mb-2">Regional Anomaly Analysis</h1>
       <p>Enter bounding box coordinates to see anomaly density in that region.</p>
 
       <Card className="my-4">

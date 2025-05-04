@@ -99,35 +99,37 @@ export default function Home() {
   };
 
   return (
-    <div>
-      <h1>Nearby Anomalies</h1>
+    <div className="flex flex-col items-center w-full max-w-screen-xl mx-auto px-4">
+      <h1 className="text-center my-4 text-2xl font-bold">Nearby Anomalies</h1>
       {location ? (
-        <MapContainer center={[location.latitude, location.longitude]} zoom={11} style={{ height: "600px", width: "100%" }}>
-          <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          />
-          {anomalies.map((anomaly, index) => (
-            // Ensure anomaly has valid latitude and longitude before rendering Marker
-            anomaly.latitude && anomaly.longitude ? (
-              <Marker key={index} position={[anomaly.latitude, anomaly.longitude]}>
-                <Popup>
-                  <strong>{anomaly.parameter}</strong>: {anomaly.value}
-                  <br />
-                  Time: {new Date(anomaly.time).toLocaleDateString()} {new Date(anomaly.time).toLocaleTimeString()}
-                  <br />
-                  Description: {anomaly.description}
-                </Popup>
-              </Marker>
-            ) : null
-          ))}
-           {/* Marker for user's location */}
-           <Marker position={[location.latitude, location.longitude]}>
-             <Popup>Your Location</Popup>
-           </Marker>
-        </MapContainer>
+        <div className="w-full">
+          <MapContainer center={[location.latitude, location.longitude]} zoom={11} style={{ height: "600px", width: "100%" }}>
+            <TileLayer
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            />
+            {anomalies.map((anomaly, index) => (
+              // Ensure anomaly has valid latitude and longitude before rendering Marker
+              anomaly.latitude && anomaly.longitude ? (
+                <Marker key={index} position={[anomaly.latitude, anomaly.longitude]}>
+                  <Popup>
+                    <strong>{anomaly.parameter}</strong>: {anomaly.value}
+                    <br />
+                    Time: {new Date(anomaly.time).toLocaleDateString()} {new Date(anomaly.time).toLocaleTimeString()}
+                    <br />
+                    Description: {anomaly.description}
+                  </Popup>
+                </Marker>
+              ) : null
+            ))}
+            {/* Marker for user's location */}
+            <Marker position={[location.latitude, location.longitude]}>
+              <Popup>Your Location</Popup>
+            </Marker>
+          </MapContainer>
+        </div>
       ) : (
-        <p>Fetching your location or using default...</p>
+        <p className="text-center my-4">Fetching your location or using default...</p>
       )}
     </div>
   );

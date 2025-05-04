@@ -100,9 +100,9 @@ export default function AlertsPage() {
   };
 
   return (
-    <div>
-      <h1>Anomaly Alerts</h1>
-      <p>Showing recent air quality anomalies detected by the system.</p>
+    <div className="container max-w-4xl mx-auto px-4">
+      <h1 className="text-2xl font-bold mt-6 mb-2">Anomaly Alerts</h1>
+      <p className="mb-6">Showing recent air quality anomalies detected by the system.</p>
 
       {loading && <p>Loading alerts...</p>}
       {error && <p className="text-red-500">Error: {error}</p>}

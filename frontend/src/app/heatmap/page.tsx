@@ -233,9 +233,9 @@ export default function HeatmapPage() {
   }
 
   return (
-    <div>
-      <h1>Air Quality Heatmap</h1>
-      <p>Showing the intensity of recent air quality anomalies.</p>
+    <div className="flex flex-col items-center w-full max-w-screen-xl mx-auto px-4">
+      <h1 className="text-center my-4 text-2xl font-bold">Air Quality Heatmap</h1>
+      <p className="text-center">Showing the intensity of recent air quality anomalies.</p>
       
       <div className="mb-4 flex gap-2">
         <Button onClick={handleRefresh} disabled={loading}>
@@ -250,59 +250,61 @@ export default function HeatmapPage() {
       </div>
       
       {error && (
-        <Card className="mb-4">
+        <Card className="mb-4 w-full">
           <CardContent className="pt-4 text-red-500">
             Error: {error}
           </CardContent>
         </Card>
       )}
       
-      <MapContainer center={mapCenter} zoom={12} style={{ height: '70vh', width: '100%' }}>
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        />
-        
-        {/* Heatmap layer */}
-        {showHeatmap && heatmapData.length > 0 && (
-          <HeatmapLayer
-            key={`heatmap-${heatmapKey}`}
-            points={heatmapData}
-            longitudeExtractor={(p: [number, number, number]) => p[1]}
-            latitudeExtractor={(p: [number, number, number]) => p[0]}
-            intensityExtractor={(p: [number, number, number]) => p[2]}
-            radius={25} 
-            blur={15}
-            max={50}
+      <div className="w-full">
+        <MapContainer center={mapCenter} zoom={12} style={{ height: '70vh', width: '100%' }}>
+          <TileLayer
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           />
-        )}
-        
-        {/* Markers for individual anomalies */}
-        {showMarkers && anomalies.map((anomaly, idx) => (
-          anomaly.latitude && anomaly.longitude ? (
-            <Marker 
-              key={`anomaly-${idx}`}
-              position={[anomaly.latitude, anomaly.longitude]}
-            >
-              <Popup>
-                <div>
-                  <h3 className="font-bold">{anomaly.parameter}</h3>
-                  <p>Value: {anomaly.value}</p>
-                  <p>Reason: {anomaly.description}</p>
-                  {anomaly.time && <p>Time: {new Date(anomaly.time).toLocaleString()}</p>}
-                </div>
-              </Popup>
-            </Marker>
-          ) : null
-        ))}
-        
-        {/* User location marker */}
-        <Marker position={mapCenter}>
-          <Popup>Your Location</Popup>
-        </Marker>
-      </MapContainer>
+          
+          {/* Heatmap layer */}
+          {showHeatmap && heatmapData.length > 0 && (
+            <HeatmapLayer
+              key={`heatmap-${heatmapKey}`}
+              points={heatmapData}
+              longitudeExtractor={(p: [number, number, number]) => p[1]}
+              latitudeExtractor={(p: [number, number, number]) => p[0]}
+              intensityExtractor={(p: [number, number, number]) => p[2]}
+              radius={25} 
+              blur={15}
+              max={50}
+            />
+          )}
+          
+          {/* Markers for individual anomalies */}
+          {showMarkers && anomalies.map((anomaly, idx) => (
+            anomaly.latitude && anomaly.longitude ? (
+              <Marker 
+                key={`anomaly-${idx}`}
+                position={[anomaly.latitude, anomaly.longitude]}
+              >
+                <Popup>
+                  <div>
+                    <h3 className="font-bold">{anomaly.parameter}</h3>
+                    <p>Value: {anomaly.value}</p>
+                    <p>Reason: {anomaly.description}</p>
+                    {anomaly.time && <p>Time: {new Date(anomaly.time).toLocaleString()}</p>}
+                  </div>
+                </Popup>
+              </Marker>
+            ) : null
+          ))}
+          
+          {/* User location marker */}
+          <Marker position={mapCenter}>
+            <Popup>Your Location</Popup>
+          </Marker>
+        </MapContainer>
+      </div>
       
-      <div className="mt-4">
+      <div className="mt-4 text-center w-full">
         <p className="text-sm">
           Showing {densityPoints.length} density points and {anomalies.length} individual anomalies.
         </p>

@@ -13,13 +13,6 @@ import {
 } from 'recharts';
 import { MakeRequest } from '@/lib/utils';
 
-interface AnomalyData {
-  time: string; // Keep as string initially
-  value: number;
-  parameter: string;
-  // Add other fields if needed
-}
-
 interface ChartDataPoint {
   timestamp: number; // Store time as epoch milliseconds for sorting/charting
   timeLabel: string; // Formatted time string for display
@@ -98,7 +91,7 @@ export default function ChartsPage() {
   }, []); // Run only once
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}> {/* Added centering styles */}
       <h1>Air Quality Charts</h1>
       <p>Showing recent air quality anomaly values over time.</p>
 
