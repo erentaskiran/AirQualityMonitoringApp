@@ -28,7 +28,6 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true },
 }
 
-// Setup WebSocket routes and start server
 func (c *WebsocketServer) StartWebsocketServer() {
 	http.HandleFunc("/ws/live", c.WsHandler)
 
@@ -39,7 +38,6 @@ func (c *WebsocketServer) StartWebsocketServer() {
 	}
 }
 
-// WebSocket handler for live connections
 func (c *WebsocketServer) WsHandler(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {

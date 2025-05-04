@@ -36,7 +36,6 @@ func (d *Detector) IsAnomalous(data models.AirQualityData) (string, bool) {
 		return "", false
 	}
 
-	// WHO threshold check
 	if d.CheckTreshold(data.Parameter, data.Value) {
 		reason := "Threshold"
 		fmt.Printf("⚠️ Anomaly Detected (%s): %v\n", reason, data)
@@ -44,14 +43,12 @@ func (d *Detector) IsAnomalous(data models.AirQualityData) (string, bool) {
 		return reason, true
 	}
 
-	// Avoid division by zero if count is 0
 	if count == 0 {
 		return "", false
 	}
 
 	average := float64(sum) / float64(count)
 
-	// Percentage increase check
 	if data.Value > average*1.5 {
 		reason := "Percentage Increase"
 		fmt.Printf("⚠️ Anomaly Detected (%s): %v\n", reason, data)
@@ -59,7 +56,6 @@ func (d *Detector) IsAnomalous(data models.AirQualityData) (string, bool) {
 		return reason, true
 	}
 
-	// Z-score-based detection
 	if d.isZScoreAnomalous(data, average, float64(count)) {
 		reason := "Z-score"
 		fmt.Printf("⚠️ Anomaly Detected (%s): %v\n", reason, data)
@@ -67,7 +63,6 @@ func (d *Detector) IsAnomalous(data models.AirQualityData) (string, bool) {
 		return reason, true
 	}
 
-	// Time series analysis
 	if d.isTimeSeriesAnomalous(data) {
 		reason := "Time Series"
 		fmt.Printf("⚠️ Anomaly Detected (%s): %v\n", reason, data)
@@ -75,7 +70,6 @@ func (d *Detector) IsAnomalous(data models.AirQualityData) (string, bool) {
 		return reason, true
 	}
 
-	// Geospatial anomaly detection
 	if d.isGeospatialAnomalous(data) {
 		reason := "Geospatial"
 		fmt.Printf("⚠️ Anomaly Detected (%s): %v\n", reason, data)

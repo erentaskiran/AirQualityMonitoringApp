@@ -23,7 +23,7 @@ func (c *AirQualityRepository) SaveToDB(data models.AirQualityData) {
 		VALUES (ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
 		        $3,
 		        $4)
-	`, data.Longitude, data.Latitude, data.Parameter, data.Value) // dikkat: lon, lat sırası!
+	`, data.Longitude, data.Latitude, data.Parameter, data.Value)
 	if err != nil {
 		log.Printf("Failed to insert data: %v", err)
 	}
@@ -41,7 +41,7 @@ func (c *AirQualityRepository) Get24HourDataForParameter(parameter string, latit
 		  AND location = ST_SetSRID(ST_MakePoint($2, $3), 4326)::geography
 		  AND time >= NOW() - INTERVAL '24 hours'
 	`
-	rows, err := c.Db.Query(query, parameter, longitude, latitude) // lon, lat!!
+	rows, err := c.Db.Query(query, parameter, longitude, latitude)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query data: %w", err)
 	}

@@ -28,12 +28,10 @@ func (r *AnomalyRepository) SaveAnomalyToDB(message []byte) {
 		return
 	}
 
-	// Validate and set default time if empty
 	if anomaly.Time == "" {
 		anomaly.Time = time.Now().UTC().Format(time.RFC3339)
 	}
 
-	// Validate and set default value if empty
 	if anomaly.Value == 0 {
 		log.Println("Invalid or empty value in anomaly message")
 		return
@@ -93,10 +91,10 @@ func (r *AnomalyRepository) GetAnomaliesByLocation(latitude, longitude, radius f
 			   ST_Y(location::geometry) AS latitude,
 			   description
 		FROM anomalies
-		WHERE ST_DWithin(location, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, $3 * 1000) -- radius in meters
-		ORDER BY time DESC;` // Order by time, newest first
+		WHERE ST_DWithin(location, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, $3 * 1000)
+		ORDER BY time DESC;`
 
-	rows, err := r.Db.Query(query, longitude, latitude, radius) // lon, lat, radius (km)
+	rows, err := r.Db.Query(query, longitude, latitude, radius)
 	if err != nil {
 		log.Printf("Error querying anomalies by location: %v", err)
 		return nil, err
@@ -106,12 +104,12 @@ func (r *AnomalyRepository) GetAnomaliesByLocation(latitude, longitude, radius f
 	var anomalies []models.Anomaly
 	for rows.Next() {
 		var anomaly models.Anomaly
-		var anomalyTime time.Time // Use time.Time for scanning
+		var anomalyTime time.Time
 		if err := rows.Scan(&anomaly.Parameter, &anomaly.Value, &anomalyTime, &anomaly.Longitude, &anomaly.Latitude, &anomaly.Description); err != nil {
 			log.Printf("Error scanning anomaly row: %v", err)
 			return nil, err
 		}
-		anomaly.Time = anomalyTime.Format(time.RFC3339) // Format back to string if needed by model
+		anomaly.Time = anomalyTime.Format(time.RFC3339)
 		anomalies = append(anomalies, anomaly)
 	}
 
@@ -160,24 +158,19 @@ func (r *AnomalyRepository) GetAnomaliesByTimeRange(startTime, endTime time.Time
 	return anomalies, nil
 }
 
-// GetAnomalyDensityByRegion calculates anomaly counts within a bounding box.
-// Returns a map where keys represent grid cells (e.g., "lat_lon") and values are counts.
-// This is a simplified approach; more sophisticated grid/clustering could be used.
 func (r *AnomalyRepository) GetAnomalyDensityByRegion(minLat, minLon, maxLat, maxLon float64) (map[string]int, error) {
 	query := `
 		SELECT COUNT(*) AS count,
-			   -- Define a simple grid cell identifier (e.g., rounding coordinates)
-			   -- Adjust precision for desired grid size
 			   ROUND(ST_Y(location::geometry)::numeric, 2) AS grid_lat,
 			   ROUND(ST_X(location::geometry)::numeric, 2) AS grid_lon
 		FROM anomalies
 		WHERE ST_Contains(
-			ST_MakeEnvelope($1, $2, $3, $4, 4326), 
+			ST_MakeEnvelope($1, $2, $3, $4, 4326),
 			location::geometry
-		) -- Check if location is within the envelope
+		)
 		GROUP BY grid_lat, grid_lon;`
 
-	rows, err := r.Db.Query(query, minLon, minLat, maxLon, maxLat) // Note: ST_MakeEnvelope uses minLon, minLat, maxLon, maxLat
+	rows, err := r.Db.Query(query, minLon, minLat, maxLon, maxLat)
 	if err != nil {
 		log.Printf("Error querying anomaly density: %v", err)
 		return nil, err
@@ -192,7 +185,6 @@ func (r *AnomalyRepository) GetAnomalyDensityByRegion(minLat, minLon, maxLat, ma
 			log.Printf("Error scanning density row: %v", err)
 			return nil, err
 		}
-		// Create a simple key for the map
 		gridKey := fmt.Sprintf("%.2f_%.2f", gridLat, gridLon)
 		density[gridKey] = count
 	}

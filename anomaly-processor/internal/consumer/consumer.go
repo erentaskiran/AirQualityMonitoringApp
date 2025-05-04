@@ -31,8 +31,8 @@ func (c *Consumer) StartConsumer() {
 	defer ch.Close()
 
 	q, err := ch.QueueDeclare(
-		"anomaly_alerts", // Kuyruk adı
-		true,             // Durable
+		"anomaly_alerts",
+		true,
 		false,
 		false,
 		false,
@@ -45,7 +45,7 @@ func (c *Consumer) StartConsumer() {
 	msgs, err := ch.Consume(
 		q.Name,
 		"",
-		true, // Otomatik onay
+		true,
 		false,
 		false,
 		false,

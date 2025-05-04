@@ -14,8 +14,8 @@ import {
 import { MakeRequest } from '@/lib/utils';
 
 interface ChartDataPoint {
-  timestamp: number; // Store time as epoch milliseconds for sorting/charting
-  timeLabel: string; // Formatted time string for display
+  timestamp: number; 
+  timeLabel: string; 
   value: number;
   parameter: string;
 }
@@ -29,11 +29,9 @@ export default function ChartsPage() {
     setLoading(true);
     setError(null);
     
-    // Calculate timerange - last 24 hours
     const endTime = new Date().toISOString();
     const startTime = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     
-    // Fetch anomalies from API instead of WebSocket
     const fetchAnomalies = async () => {
       try {
         const response = await MakeRequest(
@@ -57,14 +55,14 @@ export default function ChartsPage() {
             .map(item => {
               const date = new Date(item.time);
               return {
-                timestamp: date.getTime(), // For sorting and potential XAxis type='number'
-                timeLabel: date.toLocaleString(), // For Tooltip/XAxis display
+                timestamp: date.getTime(), 
+                timeLabel: date.toLocaleString(), 
                 value: item.value,
                 parameter: item.parameter,
               };
             })
-            .filter(item => !isNaN(item.timestamp) && typeof item.value === 'number') // Ensure valid data
-            .sort((a, b) => a.timestamp - b.timestamp); // Sort by time ascending
+            .filter(item => !isNaN(item.timestamp) && typeof item.value === 'number') 
+            .sort((a, b) => a.timestamp - b.timestamp); 
 
           setChartData(processedData);
           console.log("Processed chart data:", processedData);
@@ -82,16 +80,15 @@ export default function ChartsPage() {
     
     fetchAnomalies();
     
-    // Optional: Set up polling to refresh data
-    const intervalId = setInterval(fetchAnomalies, 30000); // Refresh every 30 seconds
+    const intervalId = setInterval(fetchAnomalies, 30000); 
     
     return () => {
       clearInterval(intervalId);
     };
-  }, []); // Run only once
+  }, []); 
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}> {/* Added centering styles */}
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}> 
       <h1>Air Quality Charts</h1>
       <p>Showing recent air quality anomaly values over time.</p>
 
@@ -103,7 +100,7 @@ export default function ChartsPage() {
       )}
 
       {!loading && !error && chartData.length > 0 && (
-        <div style={{ width: '100%', height: 400 }}> {/* Container for responsiveness */}
+        <div style={{ width: '100%', height: 400 }}> 
           <ResponsiveContainer>
             <LineChart
               data={chartData}
@@ -115,32 +112,25 @@ export default function ChartsPage() {
               }}
             >
               <CartesianGrid strokeDasharray="3 3" />
-              {/* Using timestamp for XAxis dataKey allows numerical sorting/scaling */}
-              {/* Formatting the tick labels using timeLabel */}
               <XAxis
                  dataKey="timestamp"
-                 type="number" // Treat timestamp as a number
-                 scale="time" // Use time scale
-                 domain={['dataMin', 'dataMax']} // Auto-adjust domain
-                 tickFormatter={(unixTime) => new Date(unixTime).toLocaleTimeString()} // Format ticks
+                 type="number" 
+                 scale="time" 
+                 domain={['dataMin', 'dataMax']} 
+                 tickFormatter={(unixTime) => new Date(unixTime).toLocaleTimeString()} 
                  name="Time"
                />
               <YAxis label={{ value: 'Value', angle: -90, position: 'insideLeft' }} />
               <Tooltip labelFormatter={(label) => new Date(label).toLocaleString()} />
               <Legend />
-              {/* Plotting all anomaly values on one line for now */}
-              {/* Consider grouping by parameter later */}
               <Line
                  type="monotone"
                  dataKey="value"
                  stroke="#8884d8"
                  activeDot={{ r: 8 }}
                  name="Anomaly Value"
-                 connectNulls // Connect points across gaps if needed
+                 connectNulls 
                />
-               {/* Example for adding another parameter line later:
-               <Line type="monotone" dataKey="pm25Value" stroke="#82ca9d" name="PM2.5" />
-               */}
             </LineChart>
           </ResponsiveContainer>
         </div>

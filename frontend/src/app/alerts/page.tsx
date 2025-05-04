@@ -2,16 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge"; // Import Badge if you want to use it
+import { Badge } from "@/components/ui/badge"; 
 import { MakeRequest } from '@/lib/utils';
 
 interface AnomalyAlert {
   parameter: string;
   value: number;
-  time: string; // Keep as string, format for display
+  time: string; 
   latitude?: number;
   longitude?: number;
-  description: string; // Reason for the anomaly
+  description: string; 
 }
 
 export default function AlertsPage() {
@@ -23,11 +23,9 @@ export default function AlertsPage() {
     setLoading(true);
     setError(null);
     
-    // Calculate timerange - last 24 hours
     const endTime = new Date().toISOString();
     const startTime = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     
-    // Fetch anomalies from API instead of WebSocket
     const fetchAnomalies = async () => {
       try {
         const response = await MakeRequest(
@@ -47,10 +45,8 @@ export default function AlertsPage() {
         const data = await response.json();
         
         if (Array.isArray(data)) {
-          // Validate and map data
           const validAlerts = data
             .map((item): AnomalyAlert | null => {
-              // Basic validation
               if (!item.parameter || typeof item.value !== 'number' || !item.time || !item.description) {
                 console.warn("Skipping invalid alert item:", item);
                 return null;
@@ -64,8 +60,8 @@ export default function AlertsPage() {
                 description: item.description,
               };
             })
-            .filter((item): item is AnomalyAlert => item !== null) // Filter out nulls
-            .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()); // Sort newest first
+            .filter((item): item is AnomalyAlert => item !== null) 
+            .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()); 
 
           setAlerts(validAlerts);
           console.log("Received alerts:", validAlerts);
@@ -83,19 +79,18 @@ export default function AlertsPage() {
     
     fetchAnomalies();
     
-    // Optional: Set up polling to refresh data
-    const intervalId = setInterval(fetchAnomalies, 30000); // Refresh every 30 seconds
+    const intervalId = setInterval(fetchAnomalies, 30000); 
     
     return () => {
       clearInterval(intervalId);
     };
-  }, []); // Run only once
+  }, []); 
 
   const formatTime = (timeString: string) => {
     try {
       return new Date(timeString).toLocaleString();
     } catch (e) {
-      return timeString; // Fallback to original string if parsing fails
+      return timeString; 
     }
   };
 

@@ -25,12 +25,12 @@ func (r *Queue) PublishToQueue(data models.AirQualityPayload) error {
 	defer ch.Close()
 
 	q, err := ch.QueueDeclare(
-		"mesurements", // queue name
-		true,          // durable
-		false,         // delete when unused
-		false,         // exclusive
-		false,         // no-wait
-		nil,           // arguments
+		"mesurements",
+		true,
+		false,
+		false,
+		false,
+		nil,
 	)
 	if err != nil {
 		return err
@@ -42,10 +42,10 @@ func (r *Queue) PublishToQueue(data models.AirQualityPayload) error {
 	}
 
 	return ch.Publish(
-		"",     // exchange
-		q.Name, // routing key
-		false,  // mandatory
-		false,  // immediate
+		"",
+		q.Name,
+		false,
+		false,
 		amqp.Publishing{
 			ContentType: "application/json",
 			Body:        body,

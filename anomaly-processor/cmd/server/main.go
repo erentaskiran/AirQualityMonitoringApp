@@ -48,29 +48,24 @@ func main() {
 		Api:       api.NewApi(Db),
 	}
 
-	// Start consumer
 	consumer := consumer.NewConsumer(app.QueueConn, app.Db, app.WsServer)
 	go consumer.StartConsumer()
 	fmt.Println("Consumer started")
 
-	// Use wait group to keep the application running while goroutines handle servers
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-	// Start WebSocket server
 	go func() {
 		defer wg.Done()
 		app.WsServer.StartWebsocketServer()
 	}()
 	fmt.Println("WebSocket server starting on port 8080")
 
-	// Start API server
 	go func() {
 		defer wg.Done()
 		app.Api.StartApi()
 	}()
 	fmt.Println("API server starting on port 8081")
 
-	// Wait for both servers (they won't actually return unless they crash)
 	wg.Wait()
 }

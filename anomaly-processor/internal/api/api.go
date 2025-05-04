@@ -20,32 +20,26 @@ func NewApi(Db *sql.DB) *Api {
 	}
 }
 
-// CORS middleware to handle preflight requests and add necessary headers
 func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Set CORS headers
-		w.Header().Set("Access-Control-Allow-Origin", "*") // Allow requests from any origin
+		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Start-Time, X-End-Time")
 
-		// Handle preflight requests
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
 
-		// Call the next handler
 		next(w, r)
 	}
 }
 
 func (a *Api) StartApi() {
-	// Define API routes with CORS middleware
 	http.HandleFunc("/api/anomalies/location", corsMiddleware(a.AnomaliesByLocationHandler))
 	http.HandleFunc("/api/anomalies/timerange", corsMiddleware(a.AnomaliesByTimeRangeHandler))
 	http.HandleFunc("/api/anomalies/density", corsMiddleware(a.AnomalyDensityHandler))
 
-	// Start HTTP server
 	log.Println("Starting API server on port 8081...")
 	err := http.ListenAndServe(":8081", nil)
 	if err != nil {
@@ -53,11 +47,10 @@ func (a *Api) StartApi() {
 	}
 }
 
-// HTTP handler for getting anomalies by location
 func (a *Api) AnomaliesByLocationHandler(w http.ResponseWriter, r *http.Request) {
 	latStr := r.URL.Query().Get("lat")
 	lonStr := r.URL.Query().Get("lon")
-	radiusStr := r.URL.Query().Get("radius") // Radius in km
+	radiusStr := r.URL.Query().Get("radius")
 
 	if latStr == "" || lonStr == "" || radiusStr == "" {
 		utils.WriteJSONError(w, http.StatusBadRequest, "Missing required query parameters: lat, lon, radius")
@@ -83,9 +76,8 @@ func (a *Api) AnomaliesByLocationHandler(w http.ResponseWriter, r *http.Request)
 	utils.WriteJSONResponse(w, http.StatusOK, anomalies)
 }
 
-// HTTP handler for getting anomalies by time range
 func (a *Api) AnomaliesByTimeRangeHandler(w http.ResponseWriter, r *http.Request) {
-	startTimeStr := r.Header.Get("X-Start-Time") // Expected format: RFC3339 or similar parseable by time.Parse
+	startTimeStr := r.Header.Get("X-Start-Time")
 	endTimeStr := r.Header.Get("X-End-Time")
 
 	if startTimeStr == "" || endTimeStr == "" {
@@ -93,7 +85,6 @@ func (a *Api) AnomaliesByTimeRangeHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Use a flexible parsing approach if needed, RFC3339 is standard
 	startTime, errStart := time.Parse(time.RFC3339, startTimeStr)
 	endTime, errEnd := time.Parse(time.RFC3339, endTimeStr)
 
@@ -117,7 +108,6 @@ func (a *Api) AnomaliesByTimeRangeHandler(w http.ResponseWriter, r *http.Request
 	utils.WriteJSONResponse(w, http.StatusOK, anomalies)
 }
 
-// HTTP handler for getting anomaly density by region (bounding box)
 func (a *Api) AnomalyDensityHandler(w http.ResponseWriter, r *http.Request) {
 	minLatStr := r.URL.Query().Get("minLat")
 	minLonStr := r.URL.Query().Get("minLon")

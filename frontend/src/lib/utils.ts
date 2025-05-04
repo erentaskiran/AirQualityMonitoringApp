@@ -5,7 +5,6 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-// Add debounce utility function
 export function debounce<F extends (...args: any[]) => any>(func: F, wait: number) {
   let timeout: ReturnType<typeof setTimeout> | null = null
   
@@ -33,9 +32,7 @@ export function MakeRequest(
     options.body = JSON.stringify(body)
   }
 
-  // Check if the URL is already fully qualified
   if (!url.startsWith("http")) {
-    // Normalize the URL path
     if (url.startsWith("http://localhost:8081/")) {
       url = url.replace("http://localhost:8081/", "")
     }

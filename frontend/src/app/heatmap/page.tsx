@@ -7,13 +7,11 @@ import { MakeRequest } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
-// Dynamically import Leaflet components
 const MapContainer = dynamic(() => import('react-leaflet').then((mod) => mod.MapContainer), { ssr: false });
 const TileLayer = dynamic(() => import('react-leaflet').then((mod) => mod.TileLayer), { ssr: false });
 const Marker = dynamic(() => import('react-leaflet').then((mod) => mod.Marker), { ssr: false });
 const Popup = dynamic(() => import('react-leaflet').then((mod) => mod.Popup), { ssr: false });
 
-// Dynamically import heatmap layer
 const HeatmapLayer = dynamic(
   () => import('react-leaflet-heatmap-layer-v3').then((mod) => mod.HeatmapLayer), 
   { ssr: false }
@@ -38,7 +36,7 @@ interface DensityPoint {
 export default function HeatmapPage() {
   const [anomalies, setAnomalies] = useState<Anomaly[]>([]);
   const [densityPoints, setDensityPoints] = useState<DensityPoint[]>([]);
-  const [mapCenter, setMapCenter] = useState<[number, number]>([41.0, 29.0]); // Default center (Istanbul)
+  const [mapCenter, setMapCenter] = useState<[number, number]>([41.0, 29.0]); 
   const [isClient, setIsClient] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,14 +49,10 @@ export default function HeatmapPage() {
   const [showHeatmap, setShowHeatmap] = useState(true);
   const [showMarkers, setShowMarkers] = useState(true);
   const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null);
-  // Add state to track if we should update data
   const [shouldUpdate, setShouldUpdate] = useState(true);
-  // Add state to persist heatmapData between renders
   const [heatmapData, setHeatmapData] = useState<[number, number, number][]>([]);
-  // Add state for generating a new key to force re-render of the heatmap
   const [heatmapKey, setHeatmapKey] = useState<number>(0);
 
-  // Fetch density data from API based on current map bounds
   const fetchDensityData = async () => {
     setLoading(true);
     setError(null);
@@ -71,7 +65,6 @@ export default function HeatmapPage() {
     });
 
     try {
-      // Use the API endpoint for density data
       const response = await fetch(`http://localhost:8081/api/anomalies/density?${params.toString()}`);
       
       if (!response.ok) {
@@ -80,7 +73,6 @@ export default function HeatmapPage() {
       
       const data = await response.json();
       
-      // Transform the data for the heatmap
       const points: DensityPoint[] = Object.entries(data).map(([key, count]) => {
         const [latStr, lonStr] = key.split('_');
         return {
@@ -92,7 +84,6 @@ export default function HeatmapPage() {
       });
       
       setDensityPoints(points);
-      // Also update the heatmapData state
       const newHeatmapData = points.map(point => [point.lat, point.lon, point.count * 10] as [number, number, number]);
       setHeatmapData(newHeatmapData);
       console.log("Fetched density data:", points);
@@ -105,10 +96,8 @@ export default function HeatmapPage() {
     }
   };
 
-  // Fetch recent anomalies for markers
   const fetchRecentAnomalies = async () => {
     try {
-      // Calculate timerange - last 12 hours
       const endTime = new Date().toISOString();
       const startTime = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString();
       
@@ -130,7 +119,6 @@ export default function HeatmapPage() {
       
       if (Array.isArray(data)) {
         setAnomalies(data);
-        // Don't overwrite heatmap data here - anomaly data will be shown as markers
         console.log(`Fetched ${data.length} anomalies`);
       } else {
         console.warn("Received non-array anomaly data:", data);
@@ -143,7 +131,6 @@ export default function HeatmapPage() {
   useEffect(() => {
     setIsClient(true);
 
-    // Fix Leaflet default icon issue
     import('leaflet').then(L => {
       delete (L.Icon.Default.prototype as any)._getIconUrl;
       L.Icon.Default.mergeOptions({
@@ -153,14 +140,12 @@ export default function HeatmapPage() {
       });
     });
 
-    // Get user's location to center the map
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const userLat = position.coords.latitude;
         const userLon = position.coords.longitude;
         
         setMapCenter([userLat, userLon]);
-        // Update map bounds based on user location
         setMapBounds({
           minLat: userLat - 0.2,
           minLon: userLon - 0.2,
@@ -172,24 +157,20 @@ export default function HeatmapPage() {
       },
       (error) => {
         console.error("Error fetching location, using default:", error);
-        // Keep default center and bounds
       }
     );
 
-    // Initial data fetch
     fetchDensityData();
     fetchRecentAnomalies();
     setLastRefreshTime(new Date());
-  }, []); // Remove mapBounds from dependency array to prevent constant re-fetching
+  }, []); 
   
-  // Separate effect for handling mapBounds changes with debounce
   useEffect(() => {
-    // Add a debounce timer to avoid excessive updates on map bound changes
     const debounceTimer = setTimeout(() => {
-      if (isClient) { // Only fetch if client-side rendering is active
+      if (isClient) { 
         fetchDensityData();
       }
-    }, 1000); // Wait 1 second after bounds change before fetching
+    }, 1000); 
     
     return () => clearTimeout(debounceTimer);
   }, [mapBounds, isClient]);
@@ -199,17 +180,14 @@ export default function HeatmapPage() {
     setLoading(true);
     
     try {
-      // Reset the current data first
       setDensityPoints([]);
       setHeatmapData([]);
       setAnomalies([]);
       
-      // Then fetch new data (using await to ensure they complete)
       await fetchDensityData();
       await fetchRecentAnomalies();
       setLastRefreshTime(new Date());
       
-      // Increment the heatmapKey to force a complete re-render of the heatmap
       setHeatmapKey(prevKey => prevKey + 1);
     } catch (error) {
       console.error("Error during refresh:", error);
@@ -228,7 +206,6 @@ export default function HeatmapPage() {
   };
 
   if (!isClient) {
-    // Render placeholder or loading state on the server
     return <div>Loading Map...</div>;
   }
 
@@ -264,7 +241,6 @@ export default function HeatmapPage() {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           />
           
-          {/* Heatmap layer */}
           {showHeatmap && heatmapData.length > 0 && (
             <HeatmapLayer
               key={`heatmap-${heatmapKey}`}
@@ -278,7 +254,6 @@ export default function HeatmapPage() {
             />
           )}
           
-          {/* Markers for individual anomalies */}
           {showMarkers && anomalies.map((anomaly, idx) => (
             anomaly.latitude && anomaly.longitude ? (
               <Marker 
@@ -297,7 +272,6 @@ export default function HeatmapPage() {
             ) : null
           ))}
           
-          {/* User location marker */}
           <Marker position={mapCenter}>
             <Popup>Your Location</Popup>
           </Marker>
