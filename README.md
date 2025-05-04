@@ -1,5 +1,39 @@
 # Hava Kalitesi İzleme Sistemi
 
+## İçindekiler
+- [Projenin Amacı ve Kapsamı](#projenin-amacı-ve-kapsamı)
+- [Sistem Mimarisi](#sistem-mimarisi)
+  - [Backend Bileşenleri](#backend-bileşenleri)
+  - [Veri Depolama](#veri-depolama)
+  - [Mesaj Aracısı](#mesaj-aracısı)
+  - [Ön Uç](#ön-uç)
+  - [İletişim Akışları](#i̇letişim-akışları)
+- [Teknoloji Seçimleri](#teknoloji-seçimleri)
+  - [Go (Golang)](#go-golang)
+  - [PostgreSQL/TimescaleDB](#postgresqltimescaledb)
+  - [RabbitMQ](#rabbitmq)
+  - [Next.js/React](#nextjsreact)
+  - [Leaflet/React-Leaflet](#leafletreact-leaflet)
+  - [Docker/Docker Compose](#dockerdocker-compose)
+- [Kurulum ve Yapılandırma](#kurulum-ve-yapılandırma)
+  - [Ön Koşullar](#ön-koşullar)
+  - [Kurulum Adımları](#kurulum-adımları)
+  - [Geliştirme Ortamı](#geliştirme-ortamı)
+- [Kullanım Rehberi](#kullanım-rehberi)
+  - [Web Arayüzü](#web-arayüzü)
+  - [Veri Giriş Yöntemleri](#veri-giriş-yöntemleri)
+- [API Dokümantasyonu](#api-dokümantasyonu)
+  - [Veri Alım API](#veri-alım-api)
+  - [Anomali API](#anomali-api)
+  - [WebSocket API](#websocket-api)
+- [Script Kullanımı](#script-kullanımı)
+  - [manual-input.sh](#manual-inputsh)
+  - [auto-test.sh](#auto-testsh)
+- [Sorun Giderme](#sorun-giderme)
+  - [Yaygın Sorunlar](#yaygın-sorunlar)
+  - [Günlükler ve Hata Ayıklama](#günlükler-ve-hata-ayıklama)
+  - [Sistemi Sıfırlama](#sistemi-sıfırlama)
+
 Coğrafi görselleştirme yeteneklerine sahip gerçek zamanlı hava kalitesi izleme ve anomali tespit sistemi.
 
 ## Projenin Amacı ve Kapsamı
