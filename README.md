@@ -146,6 +146,7 @@ Konteynerizasyon yaklaşımı seçildi çünkü:
 ### Ön Koşullar
 - Docker ve Docker Compose
 - Make (isteğe bağlı, script yürütmesi için)
+- Web uygulaması için Chrome, Edge veya Opera gibi Chrome tabanlı bir tarayıcı (özellikle konum tabanlı özelliklerin en iyi şekilde çalışması için)
 
 ### Kurulum Adımları
 
@@ -223,6 +224,7 @@ Geliştirme amaçlı olarak, bileşenleri bireysel olarak çalıştırabilirsini
 Aşağıdaki özellikleri kullanmak için http://localhost:3000 adresindeki web arayüzüne erişin:
 
 1. **Ana Sayfa** - Mevcut konumunuza göre yakındaki anomalileri görüntüleyin
+   * **Not:** Konum tabanlı hizmetler için Chrome, Edge veya Opera gibi Chrome tabanlı bir tarayıcı kullanılması önerilir. Safari veya Firefox'ta konum izinleri ile ilgili sorunlar yaşanabilir. Konum izni sorunları yaşarsanız tarayıcı ayarlarından site için konum erişimine izin verdiğinizden emin olun.
 2. **Isı Haritası** - Hava kalitesi anomalilerinin yoğunluğunu gösteren interaktif ısı haritası
 3. **Grafikler** - Zaman içindeki anomali verilerinin görsel sunumu
 4. **Uyarılar** - Detaylı son anomali uyarılarının listesi
