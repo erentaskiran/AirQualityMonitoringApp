@@ -3,34 +3,147 @@
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import 'leaflet/dist/leaflet.css';
-// import 'leaflet.heat'; // Import leaflet.heat - Commented out as heatmap layer is removed
+import { MakeRequest } from '@/lib/utils';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
 // Dynamically import Leaflet components
 const MapContainer = dynamic(() => import('react-leaflet').then((mod) => mod.MapContainer), { ssr: false });
 const TileLayer = dynamic(() => import('react-leaflet').then((mod) => mod.TileLayer), { ssr: false });
-// Use a type assertion for the heatmap layer import if necessary - Removed heatmap layer import
-// const HeatmapLayer = dynamic(() => import('react-leaflet-heatmap-layer-v3').then((mod) => mod.HeatmapLayer), {
-//   ssr: false,
-// }) as any; // Using 'as any' temporarily if type issues arise with v3 beta
+const Marker = dynamic(() => import('react-leaflet').then((mod) => mod.Marker), { ssr: false });
+const Popup = dynamic(() => import('react-leaflet').then((mod) => mod.Popup), { ssr: false });
+
+// Dynamically import heatmap layer
+const HeatmapLayer = dynamic(
+  () => import('react-leaflet-heatmap-layer-v3').then((mod) => mod.HeatmapLayer), 
+  { ssr: false }
+);
 
 interface Anomaly {
   latitude: number;
   longitude: number;
-  value: number; // Intensity value for the heatmap
+  value: number;
   parameter?: string;
   time?: string;
   description?: string;
 }
 
+interface DensityPoint {
+  key: string;
+  lat: number;
+  lon: number;
+  count: number;
+}
+
 export default function HeatmapPage() {
   const [anomalies, setAnomalies] = useState<Anomaly[]>([]);
+  const [densityPoints, setDensityPoints] = useState<DensityPoint[]>([]);
   const [mapCenter, setMapCenter] = useState<[number, number]>([41.0, 29.0]); // Default center (Istanbul)
   const [isClient, setIsClient] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [mapBounds, setMapBounds] = useState({
+    minLat: 40.8,
+    minLon: 28.8,
+    maxLat: 41.2,
+    maxLon: 29.2
+  });
+  const [showHeatmap, setShowHeatmap] = useState(true);
+  const [showMarkers, setShowMarkers] = useState(true);
+  const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null);
+  // Add state to track if we should update data
+  const [shouldUpdate, setShouldUpdate] = useState(true);
+  // Add state to persist heatmapData between renders
+  const [heatmapData, setHeatmapData] = useState<[number, number, number][]>([]);
+  // Add state for generating a new key to force re-render of the heatmap
+  const [heatmapKey, setHeatmapKey] = useState<number>(0);
+
+  // Fetch density data from API based on current map bounds
+  const fetchDensityData = async () => {
+    setLoading(true);
+    setError(null);
+
+    const params = new URLSearchParams({
+      minLat: mapBounds.minLat.toString(),
+      minLon: mapBounds.minLon.toString(),
+      maxLat: mapBounds.maxLat.toString(),
+      maxLon: mapBounds.maxLon.toString(),
+    });
+
+    try {
+      // Use the API endpoint for density data
+      const response = await fetch(`http://localhost:8081/api/anomalies/density?${params.toString()}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      // Transform the data for the heatmap
+      const points: DensityPoint[] = Object.entries(data).map(([key, count]) => {
+        const [latStr, lonStr] = key.split('_');
+        return {
+          key,
+          lat: parseFloat(latStr),
+          lon: parseFloat(lonStr),
+          count: count as number
+        };
+      });
+      
+      setDensityPoints(points);
+      // Also update the heatmapData state
+      const newHeatmapData = points.map(point => [point.lat, point.lon, point.count * 10] as [number, number, number]);
+      setHeatmapData(newHeatmapData);
+      console.log("Fetched density data:", points);
+
+    } catch (err) {
+      console.error("Error fetching density data:", err);
+      setError(`Failed to fetch density data: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch recent anomalies for markers
+  const fetchRecentAnomalies = async () => {
+    try {
+      // Calculate timerange - last 12 hours
+      const endTime = new Date().toISOString();
+      const startTime = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString();
+      
+      console.log("Fetching anomalies...");
+      const response = await fetch(`http://localhost:8081/api/anomalies/timerange`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Start-Time": startTime,
+          "X-End-Time": endTime
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (Array.isArray(data)) {
+        setAnomalies(data);
+        // Don't overwrite heatmap data here - anomaly data will be shown as markers
+        console.log(`Fetched ${data.length} anomalies`);
+      } else {
+        console.warn("Received non-array anomaly data:", data);
+      }
+    } catch (err) {
+      console.error("Error fetching anomalies:", err);
+    }
+  };
 
   useEffect(() => {
-    setIsClient(true); // Indicate that we are on the client side
+    setIsClient(true);
 
-    // Fix Leaflet default icon issue (important for Marker if used later)
+    // Fix Leaflet default icon issue
     import('leaflet').then(L => {
       delete (L.Icon.Default.prototype as any)._getIconUrl;
       L.Icon.Default.mergeOptions({
@@ -40,59 +153,79 @@ export default function HeatmapPage() {
       });
     });
 
-    // Get user's location to center the map (optional, fallback to default)
+    // Get user's location to center the map
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setMapCenter([position.coords.latitude, position.coords.longitude]);
-        console.log("User's location:", position.coords.latitude, position.coords.longitude);
+        const userLat = position.coords.latitude;
+        const userLon = position.coords.longitude;
+        
+        setMapCenter([userLat, userLon]);
+        // Update map bounds based on user location
+        setMapBounds({
+          minLat: userLat - 0.2,
+          minLon: userLon - 0.2,
+          maxLat: userLat + 0.2,
+          maxLon: userLon + 0.2
+        });
+
+        console.log("User's location:", userLat, userLon);
       },
       (error) => {
         console.error("Error fetching location, using default:", error);
-        // Keep default center if geolocation fails
+        // Keep default center and bounds
       }
     );
 
-    // WebSocket for historical/recent anomalies
-    const historySocket = new WebSocket("ws://localhost:8000/ws/anomalys");
-
-    historySocket.onopen = () => {
-        console.log("WebSocket connection (anomalies) opened");
-    };
-
-    historySocket.onmessage = (event) => {
-      try {
-        const receivedData = JSON.parse(event.data);
-        if (Array.isArray(receivedData)) {
-          // Ensure data has lat, lon, and value for heatmap
-          const validAnomalies = receivedData.filter(
-            (a: any): a is Anomaly => a.latitude && a.longitude && typeof a.value === 'number'
-          );
-          setAnomalies(validAnomalies);
-          // console.log("Received anomalies for heatmap:", validAnomalies); // Log might be less relevant now
-        } else {
-             console.warn("Received non-array data from WebSocket:", receivedData);
-        }
-      } catch (error) {
-        console.error("Error parsing anomaly data:", error);
+    // Initial data fetch
+    fetchDensityData();
+    fetchRecentAnomalies();
+    setLastRefreshTime(new Date());
+  }, []); // Remove mapBounds from dependency array to prevent constant re-fetching
+  
+  // Separate effect for handling mapBounds changes with debounce
+  useEffect(() => {
+    // Add a debounce timer to avoid excessive updates on map bound changes
+    const debounceTimer = setTimeout(() => {
+      if (isClient) { // Only fetch if client-side rendering is active
+        fetchDensityData();
       }
-    };
+    }, 1000); // Wait 1 second after bounds change before fetching
+    
+    return () => clearTimeout(debounceTimer);
+  }, [mapBounds, isClient]);
 
-    historySocket.onerror = (error) => {
-      console.error("WebSocket error (anomalies):", error);
-    };
+  const handleRefresh = async () => {
+    console.log("Manual refresh triggered");
+    setLoading(true);
+    
+    try {
+      // Reset the current data first
+      setDensityPoints([]);
+      setHeatmapData([]);
+      setAnomalies([]);
+      
+      // Then fetch new data (using await to ensure they complete)
+      await fetchDensityData();
+      await fetchRecentAnomalies();
+      setLastRefreshTime(new Date());
+      
+      // Increment the heatmapKey to force a complete re-render of the heatmap
+      setHeatmapKey(prevKey => prevKey + 1);
+    } catch (error) {
+      console.error("Error during refresh:", error);
+      setError(`Failed to refresh data: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    historySocket.onclose = () => {
-      console.log("WebSocket connection (anomalies) closed");
-    };
+  const toggleHeatmap = () => {
+    setShowHeatmap(!showHeatmap);
+  };
 
-    // Cleanup function
-    return () => {
-      historySocket.close();
-    };
-  }, []); // Run only once on component mount
-
-  // Prepare data for HeatmapLayer: array of [lat, lng, intensity] - Removed heatmap data preparation
-  // const heatmapData: [number, number, number][] = anomalies.map(a => [a.latitude, a.longitude, a.value]);
+  const toggleMarkers = () => {
+    setShowMarkers(!showMarkers);
+  };
 
   if (!isClient) {
     // Render placeholder or loading state on the server
@@ -102,26 +235,84 @@ export default function HeatmapPage() {
   return (
     <div>
       <h1>Air Quality Heatmap</h1>
-      <p>Showing the intensity of recent air quality anomalies. (Heatmap temporarily disabled)</p> {/* Updated text */}
-      <MapContainer center={mapCenter} zoom={10} style={{ height: '70vh', width: '100%' }}>
+      <p>Showing the intensity of recent air quality anomalies.</p>
+      
+      <div className="mb-4 flex gap-2">
+        <Button onClick={handleRefresh} disabled={loading}>
+          {loading ? 'Loading...' : 'Refresh Data'}
+        </Button>
+        <Button onClick={toggleHeatmap} variant="outline">
+          {showHeatmap ? 'Hide Heatmap' : 'Show Heatmap'}
+        </Button>
+        <Button onClick={toggleMarkers} variant="outline">
+          {showMarkers ? 'Hide Markers' : 'Show Markers'}
+        </Button>
+      </div>
+      
+      {error && (
+        <Card className="mb-4">
+          <CardContent className="pt-4 text-red-500">
+            Error: {error}
+          </CardContent>
+        </Card>
+      )}
+      
+      <MapContainer center={mapCenter} zoom={12} style={{ height: '70vh', width: '100%' }}>
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
-        {/* Removed HeatmapLayer component */}
-        {/* {heatmapData.length > 0 && (
+        
+        {/* Heatmap layer */}
+        {showHeatmap && heatmapData.length > 0 && (
           <HeatmapLayer
+            key={`heatmap-${heatmapKey}`}
             points={heatmapData}
             longitudeExtractor={(p: [number, number, number]) => p[1]}
             latitudeExtractor={(p: [number, number, number]) => p[0]}
             intensityExtractor={(p: [number, number, number]) => p[2]}
-            // Adjust these options as needed
-            radius={20} // Radius of influence for each point
-            blur={15}   // Blur effect
-            max={50}    // Maximum intensity value (adjust based on your data range)
+            radius={25} 
+            blur={15}
+            max={50}
           />
-        )} */}
+        )}
+        
+        {/* Markers for individual anomalies */}
+        {showMarkers && anomalies.map((anomaly, idx) => (
+          anomaly.latitude && anomaly.longitude ? (
+            <Marker 
+              key={`anomaly-${idx}`}
+              position={[anomaly.latitude, anomaly.longitude]}
+            >
+              <Popup>
+                <div>
+                  <h3 className="font-bold">{anomaly.parameter}</h3>
+                  <p>Value: {anomaly.value}</p>
+                  <p>Reason: {anomaly.description}</p>
+                  {anomaly.time && <p>Time: {new Date(anomaly.time).toLocaleString()}</p>}
+                </div>
+              </Popup>
+            </Marker>
+          ) : null
+        ))}
+        
+        {/* User location marker */}
+        <Marker position={mapCenter}>
+          <Popup>Your Location</Popup>
+        </Marker>
       </MapContainer>
+      
+      <div className="mt-4">
+        <p className="text-sm">
+          Showing {densityPoints.length} density points and {anomalies.length} individual anomalies.
+        </p>
+        {loading && <p className="text-sm text-blue-500">Updating data...</p>}
+        {lastRefreshTime && (
+          <p className="text-sm text-gray-500">
+            Last updated: {lastRefreshTime.toLocaleTimeString()}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
